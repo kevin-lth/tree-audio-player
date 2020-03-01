@@ -1,11 +1,11 @@
 "use strict";
 
-// NOTE : This script was provided by Ian Holyer to provide an easy way to print all incoming requests from browsers.
-// Do not use in production !
+import { testAll } from './music/tests.mjs';
+testAll();
 
 // Minimal server: log request details
-let HTTP = require('http');
-start(8080);
+import * as HTTP from 'http';
+start(8180);
 
 // Provide a service to localhost only.
 function start(port) {
