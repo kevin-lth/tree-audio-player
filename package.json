@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "sqlite": "^3.0.3",
-    "sqlite-async": "^1.0.12"
+    "sqlite": "^3.0.3"
   }
 }
