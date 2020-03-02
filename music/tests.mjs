@@ -19,7 +19,7 @@ function testModels() {
     console.assert(account1 !== account3, '[Test Model Failure] account1 !== account3');
     console.assert(account4.name === undefined, '[Test Model Failure] account4.name === undefined');
     console.assert(account4.storedPassword === undefined, '[Test Model Failure] account4.storedPassword === undefined');
-    // TODO : Eventually add similar tests for both categories and musics - the structure of the code is the same, so it's more of the same
+    // TODO : Eventually add similar tests for both categories and musics - the structure of the code is similar, so it's more of the same
 }
 
 function testDatabase() {
