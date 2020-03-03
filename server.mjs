@@ -1,9 +1,6 @@
-"use strict";
+import * as music from './music/main.mjs';
 
-import { testAll } from './music/tests.mjs';
-testAll();
-
-// Minimal server: log request details
+// Start the server on this port
 import * as HTTP from 'http';
 start(8180);
 
@@ -14,18 +11,7 @@ function start(port) {
   console.log("Visit localhost:" + port);
 }
 
-// Deal with a request.
-function handle(request, response) {
-  console.log("Method:", request.method);
-  console.log("URL:", request.url);
-  console.log("Headers:", request.headers);
-  reply(response);
-}
-
-// Send a reply.
-function reply(response) {
-  let hdrs = { 'Content-Type': 'text/plain' };
-  response.writeHead(200, hdrs);  // 200 = OK
-  response.write("OK");
-  response.end();
+// Deal with a request by redirecting everything to the music module. This may be modified to only redirect to this module on a specific URL for instance
+async function handle(request, response) {
+  await music.handle(request, response);
 }

@@ -1,4 +1,5 @@
 export function newAccount(name, storedPassword) {
+    // storedPassword is hashed. It may be undefined as well (e.g. if sent to the client)
     return { name, storedPassword };
 }
 
