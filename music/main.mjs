@@ -14,7 +14,7 @@ export async function handle(request, response) {
         error(badRequest, response);
         return;
     }
-    // Node already lower cases the header, as well as remove duplicate. Nothing to do in that regard
+    // Node already lowercases the header, as well as remove duplicate. Nothing to do in that regard
     
     switch (url.paths[0]) {
         case '':

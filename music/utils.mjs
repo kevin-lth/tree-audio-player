@@ -21,7 +21,7 @@ export function newURL(url) {
     for (let i = 1; i < file.length - 1; i++) {
         if (file[i].match(alphanumeric) === null) { return null; }
     }
-    if (file.length === 2 &&(file[0] === '' || file[1] === '')) { return null; } // We want to hide every file that starts or ends with a '.', therefore we invalidate the URL if that's the case
+    if (file.length === 2 && (file[0] === '' || file[1] === '')) { return null; } // We want to hide every file that starts or ends with a '.', therefore we invalidate the URL if that's the case
     let parameters = {};
     if (endPath.length === 2) {
         let endPathParameters = endPath[1].split('&');
