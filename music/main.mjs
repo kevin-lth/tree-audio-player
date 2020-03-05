@@ -11,6 +11,7 @@ export async function handle(request, response) {
     // Before anything, we check the URL to see if we should pass the request somewhere else.
     let url = newURL(request.url);
     if (url === null) { 
+        console.log("[Request (Music)] Invalid URL:", request.url);
         error(badRequest, response);
         return;
     }
@@ -18,7 +19,6 @@ export async function handle(request, response) {
     
     // The URL is a mutable object, so if we want to log it we have to do it here
     console.log("[Request (Music)] Method:", request.method);
-    console.log("[Request (Music)] URL:", request.url);
     console.log("[Request (Music)] Processed URL:", url);
     console.log("[Request (Music)] Headers:", request.headers);
     

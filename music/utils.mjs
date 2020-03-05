@@ -36,7 +36,7 @@ export function newURL(url) {
     
     function shift() {
         if (paths.length === 1) {
-            paths.push(''); // This adds a slash at the end of the URL effectively
+            paths.push(''); // This adds a slash at the end of each URL effectively
         }
         return paths.shift();
     }
