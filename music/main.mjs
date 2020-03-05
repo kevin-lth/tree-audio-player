@@ -14,28 +14,30 @@ export async function handle(request, response) {
         error(badRequest, response);
         return;
     }
-    // Node already lowercases the header, as well as remove duplicate. Nothing to do in that regard
+    // Node already lowercases the header, as well as remove duplicate entries. Nothing to do in that regard
+    
+    // The URL is a mutable object, so if we want to log it we have to do it here
+    console.log("[Request (Music)] Method:", request.method);
+    console.log("[Request (Music)] URL:", request.url);
+    console.log("[Request (Music)] Processed URL:", url);
+    console.log("[Request (Music)] Headers:", request.headers);
     
     switch (url.paths[0]) {
         case '':
             // We know from URL validation that this HAS to be the last fragment of the URL if it is empty
             // In other words, the URL has to be '/'
             console.log('main');
+            ok(response);
             break;
         case 'api':
             // We redirect the request to the API
-            // TODO
-            console.log('api');
+            url.shift();
+            await api.handle(url, request, response);
             break;
         default:
             error(notFound, response);
             return; // No break, as it is unaccessible anyway
     }
-    console.log("[Request (Music)] Method:", request.method);
-    console.log("[Request (Music)] URL:", request.url);
-    console.log("[Request (Music)] Processed URL:", url);
-    console.log("[Request (Music)] Headers:", request.headers);
-    ok(response);
 }
 
 function error(errorCode, response) {

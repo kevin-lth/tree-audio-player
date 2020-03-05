@@ -33,5 +33,13 @@ export function newURL(url) {
     }
     paths.shift(); // The first element of the array is always empty, we do not need it
     paths.pop(); paths.push(endPath[0]); // The last element still contains the parameters, so we replace the last element with the same string without what comes after the ?
-    return { paths, parameters };
+    
+    function shift() {
+        if (paths.length === 1) {
+            paths.push(''); // This adds a slash at the end of the URL effectively
+        }
+        return paths.shift();
+    }
+    
+    return { paths, parameters, shift };
 }
