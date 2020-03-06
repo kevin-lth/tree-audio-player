@@ -47,7 +47,7 @@ export async function handle(url, request, response) {
                     result(method, session, url.parameters, response);
                     processed = true;
                 } else {
-                    error(badRequest, response);
+                    error(notFound, response);
                     processed = true;
                 }
             } else {
@@ -55,24 +55,14 @@ export async function handle(url, request, response) {
                 currentRoutes = result;
             }
         } else {
-            error(badRequest, response);
+            error(notFound, response);
             processed = true;
         }
     }
 }
 
 function error(errorCode, response) {
-    let hdrs = { 'Content-Type': 'text/plain' };
-    response.writeHead(errorCode, hdrs);
-    response.write("Error " + errorCode);
-    response.end();
-}
-
-// Send a reply.
-function ok(response) {
-    let hdrs = { 'Content-Type': 'text/plain' };
-    response.writeHead(200, hdrs);  // 200 = OK
-    response.write("OK");
+    response.statusCode = errorCode;
     response.end();
 }
 
