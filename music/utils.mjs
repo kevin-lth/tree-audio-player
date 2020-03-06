@@ -1,12 +1,13 @@
 let alphanumeric = /^\w+$/;
 let alphanumericOrEmpty = /^\w*$/;
-let maxLength = 2000;
+let URlMaxLength = 2000;
+let acceptMaxLength = 1000;
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
 // Probably doable with only RegEx
 export function newURL(url) {
     // A valid URL has the following format : '/(alphanumeric)/(alphanumeric)/(alphanumeric)[.alphanumeric][?key=value&key2=value2]'
-    if (url === undefined || url === null || url.length > maxLength) { return null; }
+    if (url === undefined || url === null || url.length > URlMaxLength) { return null; }
     let paths = url.split('/');
     // We transform everything to lower case
     paths = paths.map((path) => path.toLowerCase());
@@ -42,4 +43,30 @@ export function newURL(url) {
     }
     
     return { paths, parameters, shift };
+}
+
+export function newAcceptHeader(accept) {
+    if (accept === undefined || accept === null || accept === '' || accept.length > acceptMaxLength) { return null; }
+    let array = accept.split(',');
+    let acceptedContentArray = [];
+    for (let i = 0; i < array.length; i++) {
+        let acceptValue = array[i].split(';');
+        if (acceptValue.length === 0) { return null; }
+        // We ignore the order of the client for now... We focus on checking it accepts the content we want to send
+        let acceptedContent = acceptValue[0].split('/');
+        if (acceptedContent.length !== 2) { return null; }
+        acceptedContentArray.push({ mimeType: acceptedContent[0], mimeSubtype: acceptedContent[1] });
+    }
+    
+    function isAccepted(contentType) {
+        for (let i = 0; i < acceptedContentArray.length; i++) {
+            let mimeType = acceptedContentArray[i].mimeType, mimeSubtype = acceptedContentArray[i].mimeSubtype;
+            if ((mimeType === contentType.mimeType || mimeType === '*') && (mimeSubtype === contentType.mimeSubtype || mimeSubtype === '*')) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    return { accept: acceptedContentArray, isAccepted };
 }

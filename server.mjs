@@ -23,5 +23,7 @@ function start(port, options) {
 
 // Deal with a request by redirecting everything to the music module. This may be modified to only redirect to this module on a specific URL for instance
 async function handle(request, response) {
+    // We add a few headers for every response for security purposes.
+    // TODO
     await music.handle(request, response);
 }

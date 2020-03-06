@@ -1,4 +1,6 @@
-let OK = 200, badRequest = 400, forbidden = 403, notFound = 404;
+import { newAcceptHeader } from './../utils.mjs'
+
+let OK = 200, badRequest = 400, forbidden = 403, notFound = 404, notAcceptable = 406;
 
 let routes = {
     account: {
@@ -13,13 +15,23 @@ let routes = {
 
 // Deal with a request.
 export async function handle(url, request, response) {
-    let acceptTypes = request.headers['accept'];
+    let acceptTypes = newAcceptHeader(request.headers['accept']);
+    if (acceptTypes === null) {
+        error(400, response);
+        return;
+    }
     let method = request.headers[':method'];
     let session = ''; // TODO
     
     console.log(`[Request (API)] ${method} /${url.paths.join('/')}`);
     console.log('[Request (API)] Parameters: ', url.parameters);
-    
+    // We check to see if the client accepts a JSON and set every response to be a JSON
+    if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) {
+        error(406, response);
+        return;
+    }
+    response.setHeader('Content-Type', 'application/json');
+
     let currentRoutes = routes;
     let processed = false;
     while (!processed) {
@@ -66,11 +78,15 @@ function ok(response) {
 
 function login(method, session, parameters, response) {
     console.log('login');
-    ok(response);
+    response.statusCode = 200;
+    response.write(JSON.stringify({miam:'miam'}));
+    response.end();
 }
 
 function logout(method, session, parameters, response) {
     console.log('logout');
-    ok(response);
+    response.statusCode = 200;
+    response.write(JSON.stringify({miam:'miamlogout'}));
+    response.end();
 }
 
