@@ -77,16 +77,14 @@ function ok(response) {
 }
 
 function login(method, session, parameters, response) {
-    console.log('login');
     response.statusCode = 200;
-    response.write(JSON.stringify({miam:'miam'}));
+    response.write(JSON.stringify({}));
     response.end();
 }
 
 function logout(method, session, parameters, response) {
-    console.log('logout');
     response.statusCode = 200;
-    response.write(JSON.stringify({miam:'miamlogout'}));
+    response.write(JSON.stringify({}));
     response.end();
 }
 
