@@ -26,6 +26,7 @@ export async function handle(url, request, response) {
     console.log(`[Request (API)] ${method} /${url.paths.join('/')}`);
     console.log('[Request (API)] Parameters: ', url.parameters);
     // We check to see if the client accepts a JSON and set every response to be a JSON
+    // There is one exception to this content-type, however it will be dealt in the function responsible for this type of request
     if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) {
         error(406, response);
         return;
