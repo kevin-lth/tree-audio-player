@@ -1,4 +1,5 @@
 import { newAcceptHeader } from './../utils.mjs'
+import { newConnection } from './database.mjs';
 
 let OK = 200, badRequest = 400, forbidden = 403, notFound = 404, notAcceptable = 406;
 
@@ -16,8 +17,14 @@ let routes = {
     }
 };
 
+let connection;
+
 // Deal with a request.
 export async function handle(url, request, response) {
+    if (connection === undefined || !connection.available) {
+        // We open a connection if we don't have one or the previous one is closed.
+        connection = await newConnection();
+    }
     let acceptTypes = newAcceptHeader(request.headers['accept']);
     if (acceptTypes === null) {
         error(400, response);

@@ -1,37 +1,104 @@
-import * as sqlite from 'sqlite';
+import sqlite from 'sqlite';
 
 export async function newConnection() {
     try {
-        let db = await sqlite.open('./database.sqlite');
+        const db = await sqlite.open('./database.sqlite');
         let available = true;
         // We prepare (almost) all the statements here and not in each function to be able to finalize them properly should we close the connection
-        let commands = {
-            createDatabase: 'CREATE IF NOT EXISTS',
-            checkDatabase:  'SELECT count(*) FROM sqlite_master WHERE type="table" AND name in ("account", "category", "category_links", "music")',
+        const statements = {
+            enableForeignKeys: await db.prepare('PRAGMA foreign_keys = ON;'),
+            createAccountTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS account (
+                    account_id INTEGER PRIMARY KEY,
+                    username TEXT NOT NULL UNIQUE,
+                    hashed_password TEXT NOT NULL
+                );`),
+            createCategoryTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS category (
+                    category_id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    short_name TEXT NOT NULL UNIQUE,
+                    cover_id INTEGER NOT NULL
+                );`),
+            createMusicTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS music (
+                    music_id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    track INTEGER NOT NULL,
+                    public INTEGER NOT NULL DEFAULT 0,
+                    category_id INTEGER NOT NULL,
+                    uploader_id INTEGER NOT NULL,
+                    FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE,
+                    FOREIGN KEY (uploader_id) REFERENCES account (account_id) ON DELETE CASCADE
+                );`),
+            createTagTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS tag (
+                    tag_id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL
+                );`),
+            createAccountCategoriesTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS account_categories (
+                    account_id INTEGER NOT NULL,
+                    category_id INTEGER NOT NULL,
+                    PRIMARY KEY (account_id, category_id),
+                    FOREIGN KEY (account_id) REFERENCES account (account_id) ON DELETE CASCADE,
+                    FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE
+                );`),
+            createCategoryLinksTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS category_links (
+                    parent_category_id INTEGER NOT NULL,
+                    child_category_id INTEGER NOT NULL,
+                    depth INTEGER NOT NULL,
+                    PRIMARY KEY (parent_category_id, child_category_id),
+                    FOREIGN KEY (parent_category_id) REFERENCES category (category_id) ON DELETE CASCADE,
+                    FOREIGN KEY (child_category_id) REFERENCES category (category_id) ON DELETE CASCADE
+                );`),
+            createMusicTagsTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS music_tags (
+                    music_id INTEGER NOT NULL,
+                    tag_id INTEGER NOT NULL,
+                    PRIMARY KEY (music_id, tag_id),
+                    FOREIGN KEY (music_id) REFERENCES music (music_id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tag (tag_id) ON DELETE CASCADE
+                );`),
+            createCategoryCoverURlTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS category_cover_urls (
+                    category_cover_url_id INTEGER PRIMARY KEY,
+                    category_id INTEGER NOT NULL UNIQUE,
+                    url TEXT NOT NULL,
+                    FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE
+                );`),
+            createMusicURlTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS music_urls (
+                    music_url_id INTEGER PRIMARY KEY,
+                    music_id INTEGER NOT NULL,
+                    format TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    FOREIGN KEY (music_id) REFERENCES music (music_id) ON DELETE CASCADE
+                );`),
         };
-        let statements = commands.map(getStatement);
         
-        function getStatement(command) {
-            return db.prepare(command);
+        async function createDatabase() {
+            // We do not check the tables as we can directly tell SQLite not to create a table if it already exists.
+            await statements.createAccountTable.run();
+            await statements.createCategoryTable.run();
+            await statements.createMusicTable.run();
+            await statements.createTagTable.run();
+            await statements.createAccountCategoriesTable.run();
+            await statements.createCategoryLinksTable.run();
+            await statements.createMusicTagsTable.run();
+            await statements.createCategoryCoverURlTable.run();
+            await statements.createMusicURlTable.run();
         }
+        
+        await statements.enableForeignKeys.run();
+        await createDatabase();
         
         // General
         
-        async function createDatabase() {
-            // We do not use checkDatabase as we can directly tell SQLite not to create the database if the tables already exists.
-            await statements.createDatabase.run();
-        }
-        
-        // Returns true if the database was created successfully, and all tables exists. Returns false otherwise.
-        // Does not check to see if the tables have the correct attributes.
-        async function checkDatabase() {
-           let result = await statements.checkDatabase.run();
-           return result === 4;
-        }
-        
         async function close() {
-            await db.close();
             available = false;
+            await db.close();
         }
         
         // Account
@@ -56,7 +123,7 @@ export async function newConnection() {
         
         // Music
         
-        return { available, createDatabase, close, createAccount, readAccount, updateAccount, deleteAccount };
+        return { available, close, createAccount, readAccount, updateAccount, deleteAccount };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};
