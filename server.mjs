@@ -5,7 +5,7 @@ import * as music from './music/main.mjs';
 
 // Please replace both the key and the certificate with ones provided by a Certificate Authority if used on a production server
 // Self-signed certificate are acceptable for development purposes only
-let options = {
+const options = {
     // Synchronous file read is intentional here, as we cannot start the server without having both the key and the certificate
     key: fs.readFileSync('key.pem'),
     cert: fs.readFileSync('cert.pem')

@@ -1,7 +1,5 @@
-let alphanumeric = /^\w+$/;
-let alphanumericOrEmpty = /^\w*$/;
-let URlMaxLength = 2000;
-let acceptMaxLength = 1000;
+const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/;
+const URlMaxLength = 2000, acceptMaxLength = 1000;
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
 // Probably doable with only RegEx

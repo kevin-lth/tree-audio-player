@@ -4,7 +4,7 @@ import { newURL } from './utils.mjs';
 import { testAll } from './tests.mjs';
 import * as api from './api/main.mjs'
 
-let OK = 200, badRequest = 400, forbidden = 403, notFound = 404;
+const OK = 200, badRequest = 400, forbidden = 403, notFound = 404;
 
 // Deal with a request.
 export async function handle(request, response) {

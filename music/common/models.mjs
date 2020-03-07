@@ -1,4 +1,4 @@
-let alphanumeric = /^\w+$/;
+const alphanumeric = /^\w+$/;
 
 export function newAccount(name, hashedPassword) {
     if ((name !== undefined && name !== null && name.match(alphanumeric) && name.length <= 16) 
