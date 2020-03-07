@@ -13,12 +13,11 @@ function testModels() {
     let account4 = newAccount();
     console.assert(account1, '[Test Model Failure] account1');
     console.assert(account1.name === 'username1', '[Test Model Failure] account1.name === "username1"');
-    console.assert(account1.storedPassword === 'secret', '[Test Model Failure] account1.storedPassword === "secret"');
+    console.assert(account1.hashedPassword === 'secret', '[Test Model Failure] account1.hashedPassword === "secret"');
     console.assert(account1.name !== account2.name, '[Test Model Failure] account1.name !== account2.name');
-    console.assert(account1.storedPassword !== account2.storedPassword, '[Test Model Failure] account1.storedPassword !== account2.storedPassword');
+    console.assert(account1.hashedPassword !== account2.hashedPassword, '[Test Model Failure] account1.hashedPassword !== account2.hashedPassword');
     console.assert(account1 !== account3, '[Test Model Failure] account1 !== account3');
-    console.assert(account4.name === undefined, '[Test Model Failure] account4.name === undefined');
-    console.assert(account4.storedPassword === undefined, '[Test Model Failure] account4.storedPassword === undefined');
+    console.assert(account4 === null, '[Test Model Failure] account4 === null');
     // TODO : Eventually add similar tests for both categories and musics - the structure of the code is similar, so it's more of the same
 }
 

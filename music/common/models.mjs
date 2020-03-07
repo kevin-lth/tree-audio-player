@@ -1,7 +1,8 @@
 let alphanumeric = /^\w+$/;
 
 export function newAccount(name, hashedPassword) {
-    if ((name.match(alphanumeric) && name.length <= 16) && (hashedPassword.match(alphanumeric) && hashedPassword.length === 32)) {
+    if ((name !== undefined && name !== null && name.match(alphanumeric) && name.length <= 16) 
+        && (hashedPassword !== undefined && hashedPassword !== null && hashedPassword.match(alphanumeric))) {
         return { name, hashedPassword };
     } else {
         return null;
