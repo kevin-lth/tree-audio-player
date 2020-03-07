@@ -1,7 +1,7 @@
 let alphanumeric = /^\w+$/;
 
 export function newAccount(name, hashedPassword) {
-    if ((name.match(alphanumeric) && name.length <= 16) && (hashedPassword.match(alphanumeric) && hashedPassword.length === 32) {
+    if ((name.match(alphanumeric) && name.length <= 16) && (hashedPassword.match(alphanumeric) && hashedPassword.length === 32)) {
         return { name, hashedPassword };
     } else {
         return null;
@@ -15,7 +15,7 @@ export function newCategory(reference, name, shortName, children, coverReference
     return { reference, name, shortName, children, coverReference };
 }
 
-export function newMusic(reference, name, tags, categoryReference) {
+export function newMusic(reference, name, tags, category, trackNumber, isPublic, uploader) {
     // TODO : Validity check
-    return { reference, name, tags, categoryReference };
+    return { reference, name, tags, categoryReference, trackNumber, isPublic, uploader };
 }
