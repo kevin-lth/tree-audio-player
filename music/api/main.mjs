@@ -8,8 +8,11 @@ let routes = {
         logout: logout
     },
     category: {
+        resource: category_resource,
     },
     music: {
+        download: music_download,
+        resource: music_resource,
     }
 };
 
@@ -67,6 +70,7 @@ function error(errorCode, response) {
     response.end();
 }
 
+// TODO : Every function below (and more) properly
 function login(method, session, parameters, response) {
     response.statusCode = 200;
     response.write(JSON.stringify({}));
@@ -74,6 +78,24 @@ function login(method, session, parameters, response) {
 }
 
 function logout(method, session, parameters, response) {
+    response.statusCode = 200;
+    response.write(JSON.stringify({}));
+    response.end();
+}
+
+function category_resource(method, session, parameters, response) {
+    response.statusCode = 200;
+    response.write(JSON.stringify({}));
+    response.end();
+}
+
+function music_download(method, session, parameters, response) {
+    response.statusCode = 200;
+    response.write(JSON.stringify({}));
+    response.end();
+}
+
+function music_resource(method, session, parameters, response) {
     response.statusCode = 200;
     response.write(JSON.stringify({}));
     response.end();
