@@ -1,4 +1,5 @@
 import sqlite from 'sqlite';
+import { newAccount } from '../common/models.mjs';
 
 export async function newConnection() {
     try {
@@ -12,6 +13,13 @@ export async function newConnection() {
                     account_id INTEGER PRIMARY KEY,
                     username TEXT NOT NULL UNIQUE,
                     hashed_password TEXT NOT NULL
+                );`),
+            createSessionTable: await db.prepare(
+                `CREATE TABLE IF NOT EXISTS session (
+                    account_id INTEGER PRIMARY KEY,
+                    token TEXT NOT NULL UNIQUE,
+                    expires INT NOT NULL,
+                    FOREIGN KEY (account_id) REFERENCES account (account_id) ON DELETE CASCADE
                 );`),
             createCategoryTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS category (
@@ -76,11 +84,19 @@ export async function newConnection() {
                     url TEXT NOT NULL,
                     FOREIGN KEY (music_id) REFERENCES music (music_id) ON DELETE CASCADE
                 );`),
+            createAccount: await db.prepare(''),
+            getAccount: await db.prepare(''),
+            updateAccount: await db.prepare(''),
+            deleteSession: await db.prepare(''),
+            getSession: await db.prepare(''),
+            getSessionFromToken: await db.prepare(''),
+            deleteSession: await db.prepare(''),
         };
         
         async function createDatabase() {
             // We do not check the tables as we can directly tell SQLite not to create a table if it already exists.
             await statements.createAccountTable.run();
+            await statements.createSessionTable.run();
             await statements.createCategoryTable.run();
             await statements.createMusicTable.run();
             await statements.createTagTable.run();
@@ -107,7 +123,7 @@ export async function newConnection() {
             
         }
         
-        async function readAccount(reference) {
+        async function getAccount(account_id) {
             
         }
         
@@ -115,15 +131,34 @@ export async function newConnection() {
             
         }
         
-        async function deleteAccount(reference) {
+        async function deleteAccount(account_id) {
             
+        }
+        
+        // Session
+        
+        async function createSession(account_id, token) {
+        
+        }
+        
+        async function getCurrentToken(account_id) {
+        
+        }
+        
+        async function getAccountFromToken(token) {
+            // TODO
+            // We need to check that the token is still valid...
+        }
+        
+        async function revokeSession(account_id) {
+        
         }
         
         // Category
         
         // Music
         
-        return { available, close, createAccount, readAccount, updateAccount, deleteAccount };
+        return { available, close, createAccount, getAccount, updateAccount, deleteAccount, createSession, getCurrentToken, getAccountFromToken, revokeSession };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};

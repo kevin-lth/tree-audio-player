@@ -1,5 +1,6 @@
 const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/;
-const URlMaxLength = 2000, acceptMaxLength = 1000;
+const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000;
+const validAuthorizationMethod = ['Bearer'];
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
 // Probably doable with only RegEx
@@ -68,3 +69,26 @@ export function newAcceptHeader(accept) {
     
     return { accept: acceptedContentArray, isAccepted };
 }
+
+export function newAuthorizationHeader(authorization) {
+    if (authorization === undefined || authorization === null || authorization === '' || authorization.length > authorizationMaxLength) { return null; }
+    let array = authorization.split(' ');
+    if (array.length !== 2 || validAuthorizationMethod.indexOf(array[0]) === -1 || array[1].match(alphanumeric)) { return null; }
+    
+    return { type: array[0], token: array[1] };
+}
+
+export function newCookieHeader(cookie) {
+    if (cookie === undefined || cookie === null || cookie === '' || cookie.length > cookieMaxLength) { return null; }
+    let array = cookie.split(';');
+    let cookies = {};
+    for (let i = 0; i < array.length; i++) {
+        let cookieValue = array[i].split('=');
+        if (cookieValue.length !== 2) { return null; }
+        cookies[cookieValue[0].trim()] = cookieValue[1].trim();
+    }
+    
+    return cookies;
+}
+
+

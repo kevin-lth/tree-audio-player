@@ -1,9 +1,10 @@
-import { newAcceptHeader } from './../utils.mjs'
+import { newAcceptHeader, newAuthorizationHeader, newCookieHeader } from './../utils.mjs'
 import { newConnection } from './database.mjs';
 
 let OK = 200, badRequest = 400, forbidden = 403, notFound = 404, notAcceptable = 406;
 
 let routes = {
+    status: status,
     account: {
         login: login,
         logout: logout
@@ -31,8 +32,7 @@ export async function handle(url, request, response) {
         return;
     }
     let method = request.headers[':method'];
-    let session = ''; // TODO
-    
+    let session = get_session(request);
     console.log(`[Request (API)] ${method} /${url.paths.join('/')}`);
     console.log('[Request (API)] Parameters: ', url.parameters);
     // We check to see if the client accepts a JSON and set every response to be a JSON
@@ -77,7 +77,39 @@ function error(errorCode, response) {
     response.end();
 }
 
+// TODO
+function get_session(request) {
+    // We have 2 ways to obtain the current used session, and the first one takes precedent over the second:
+    // 1) Check the Authorization header. It HAS to be of type Bearer and must be followed by a session token.
+    // 2) Check the cookies.
+    let authorization = newAuthorizationHeader(request.headers['authorization']);
+    let cookies = newCookieHeader(request.headers['cookie']);
+    console.log(cookies);
+    if (authorization !== null && authorization.type === 'Bearer') {
+        return authorization.token;
+    } else if (cookies !== null && cookies['token'] !== undefined) {
+        return cookies['token'];
+    } else {
+        return null;
+    }
+}
+
+function check_session(session) {
+    if (session === undefined || session === null || session === '') { return false; }
+    // TODO: check the database for the session's existence and to obtain the account's id
+    
+	return true;
+}
+
 // TODO : Every function below (and more) properly
+
+function status(method, session, parameters, response) {
+    response.statusCode = 200;
+    response.write(JSON.stringify({}));
+    response.end();
+}
+
+
 function login(method, session, parameters, response) {
     response.statusCode = 200;
     response.write(JSON.stringify({}));
