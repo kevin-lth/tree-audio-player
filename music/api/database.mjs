@@ -2,8 +2,6 @@ import sqlite from 'sqlite';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
-import { newAccount } from '../common/models.mjs';
-
 export async function newConnection() {
     try {
         const db = await sqlite.open('./database.sqlite');
