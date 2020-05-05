@@ -55,3 +55,4 @@ function ok(response) {
 }
 
 testAll();
+

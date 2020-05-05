@@ -20,3 +20,4 @@ export function newMusic(reference, name, tags, category, trackNumber, isPublic,
     // TODO : Validity check
     return { reference, name, tags, categoryReference, trackNumber, isPublic, uploader };
 }
+
