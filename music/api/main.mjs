@@ -1,6 +1,8 @@
 import { newAcceptHeader, newAuthorizationHeader, newCookieHeader } from './../utils.mjs'
 import { newConnection } from './database.mjs';
 
+import { newAccount } from '../common/models.mjs';
+
 let OK = 200, badRequest = 400, forbidden = 403, notFound = 404, notAcceptable = 406;
 
 let routes = {

@@ -1,4 +1,6 @@
 import sqlite from 'sqlite';
+import bcrypt from 'bcrypt';
+
 import { newAccount } from '../common/models.mjs';
 
 export async function newConnection() {
@@ -6,7 +8,7 @@ export async function newConnection() {
         const db = await sqlite.open('./database.sqlite');
         let available = true;
         // We prepare (almost) all the statements here and not in each function to be able to finalize them properly should we close the connection
-        const statements = {
+        const init_statements = {
             enableForeignKeys: await db.prepare('PRAGMA foreign_keys = ON;'),
             createAccountTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS account (
@@ -84,31 +86,37 @@ export async function newConnection() {
                     url TEXT NOT NULL,
                     FOREIGN KEY (music_id) REFERENCES music (music_id) ON DELETE CASCADE
                 );`),
-            createAccount: await db.prepare(''),
-            getAccount: await db.prepare(''),
-            updateAccount: await db.prepare(''),
-            deleteSession: await db.prepare(''),
-            getSession: await db.prepare(''),
-            getSessionFromToken: await db.prepare(''),
-            deleteSession: await db.prepare(''),
         };
         
-        async function createDatabase() {
-            // We do not check the tables as we can directly tell SQLite not to create a table if it already exists.
-            await statements.createAccountTable.run();
-            await statements.createSessionTable.run();
-            await statements.createCategoryTable.run();
-            await statements.createMusicTable.run();
-            await statements.createTagTable.run();
-            await statements.createAccountCategoriesTable.run();
-            await statements.createCategoryLinksTable.run();
-            await statements.createMusicTagsTable.run();
-            await statements.createCategoryCoverURlTable.run();
-            await statements.createMusicURlTable.run();
-        }
+        let statements;
         
-        await statements.enableForeignKeys.run();
-        await createDatabase();
+        async function initDatabase() {
+            await init_statements.enableForeignKeys.run();
+            // We do not check the tables as we can directly tell SQLite not to create a table if it already exists.
+            await init_statements.createAccountTable.run();
+            await init_statements.createSessionTable.run();
+            await init_statements.createCategoryTable.run();
+            await init_statements.createMusicTable.run();
+            await init_statements.createTagTable.run();
+            await init_statements.createAccountCategoriesTable.run();
+            await init_statements.createCategoryLinksTable.run();
+            await init_statements.createMusicTagsTable.run();
+            await init_statements.createCategoryCoverURlTable.run();
+            await init_statements.createMusicURlTable.run();
+            console.log('[Database] Database created ! (ignore if it already existed before)');
+            // We now prepare the statements related to the tables.
+            statements = {
+                createAccount: await db.prepare('INSERT INTO account (username, hashed_password) VALUES ($username, $hashed_password);'),
+                getAccount: await db.prepare(''),
+                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password FROM account WHERE username=$username;'),
+                updateAccount: await db.prepare(''),
+                deleteSession: await db.prepare(''),
+                getSession: await db.prepare(''),
+                getSessionFromToken: await db.prepare(''),
+                deleteSession: await db.prepare(''),
+            };
+        }
+        await initDatabase();
         
         // General
         
@@ -120,11 +128,30 @@ export async function newConnection() {
         // Account
         
         async function createAccount(account) {
-            
+            // We assume that account is using the power class defined earlier, and so we don't have to do sanity checks again.
+            // The salt is stored inside the string, so we don't have to worry about storing it ourselves
+            let hashed_password = await bcrypt.hash(account.password, 12);
+            try {
+                await statements.createAccount.run({ $username: account.name, $hashed_password: hashed_password });
+            } catch (error) {
+                console.log(`[Database] createAccount failed ! username = ${account.name}, error = ${error}`);
+            }
         }
         
         async function getAccount(account_id) {
             
+        }
+        
+        async function checkAccountCredentials(account) {
+            try {
+                let db_account = await statements.getAccountFromUsername.get({ $username: account.name });
+                let known_username = db_account !== undefined;
+                // The reason we do NOT return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
+                let check = await bcrypt.compare(account.password, db_account.hashed_password);
+                return known_username && check;
+            } catch (error) {
+                console.log(`[Database] checkAccountCredentials failed ! username = ${account.name}, error = ${error}`);
+            }
         }
         
         async function updateAccount(account) {
@@ -137,7 +164,7 @@ export async function newConnection() {
         
         // Session
         
-        async function createSession(account_id, token) {
+        async function createSession(account_id) {
         
         }
         
@@ -158,7 +185,7 @@ export async function newConnection() {
         
         // Music
         
-        return { available, close, createAccount, getAccount, updateAccount, deleteAccount, createSession, getCurrentToken, getAccountFromToken, revokeSession };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getCurrentToken, getAccountFromToken, revokeSession };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};
