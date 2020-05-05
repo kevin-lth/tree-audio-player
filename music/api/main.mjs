@@ -17,7 +17,7 @@ let routes = {
         resource: category_resource,
     },
     music: {
-        download: music_download,
+        file: music_file,
         resource: music_resource,
     }
 };
@@ -148,7 +148,7 @@ async function register(method, session, parameters, request, response) {
     }
 }
 
-async function login(method, session, parameters, request, response) {
+async function login(method, session, parameters, request, response) { // We ignore the URL Parameters intentionally, as the password would be visible on-screen (via the URL) by the end-user.
     const validMethods = ['POST'];
     if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
     
@@ -194,18 +194,27 @@ async function logout(method, session, parameters, request, response) {
 }
 
 async function category_resource(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET', 'POST', 'PUT', 'DELETE'];
+    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    
     response.statusCode = 200;
     response.write(JSON.stringify({}));
     response.end();
 }
 
-async function music_download(method, session, parameters, request, response) {
+async function music_file(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET', 'POST'];
+    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    
     response.statusCode = 200;
     response.write(JSON.stringify({}));
     response.end();
 }
 
 async function music_resource(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET', 'POST', 'PUT', 'DELETE'];
+    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    
     response.statusCode = 200;
     response.write(JSON.stringify({}));
     response.end();
