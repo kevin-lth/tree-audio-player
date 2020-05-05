@@ -1,5 +1,5 @@
 const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/;
-const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000;
+const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, maxPayloadSize = 1e6;
 const validAuthorizationMethod = ['Bearer'];
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
@@ -23,14 +23,8 @@ export function newURL(url) {
     }
     if (file.length === 2 && (file[0] === '' || file[1] === '')) { return null; } // We want to hide every file that starts or ends with a '.', therefore we invalidate the URL if that's the case
     let parameters = {};
-    if (endPath.length === 2) {
-        let endPathParameters = endPath[1].split('&');
-        for (let i = 0; i < endPathParameters.length; i++) {
-            let data = endPathParameters[i].split('=');
-            if (data.length !== 2 || data[0].match(alphanumeric) === null || data[1].match(alphanumeric) === null) { return null; }
-            parameters[data[0].toLowerCase()] = data[1].toLowerCase();
-        }
-    }
+    if (endPath.length === 2) { parameters = newParameters(endPath[1]); }
+    if (parameters === null) { return null; }
     paths.shift(); // The first element of the array is always empty, we do not need it
     paths.pop(); paths.push(endPath[0]); // The last element still contains the parameters, so we replace the last element with the same string without what comes after the ?
     
@@ -42,6 +36,17 @@ export function newURL(url) {
     }
     
     return { paths, parameters, shift };
+}
+
+export function newParameters(urlencoded_parameters) {
+    let parameters = {};
+    let endPathParameters = urlencoded_parameters.split('&');
+    for (let i = 0; i < endPathParameters.length; i++) {
+        let data = endPathParameters[i].split('=');
+        if (data.length !== 2 || data[0].match(alphanumeric) === null || data[1].match(alphanumeric) === null) { return null; }
+        parameters[data[0]] = data[1]; // It is important that parameters remain case sensitive ! (e.g. passwords)
+    }
+    return parameters;
 }
 
 export function newAcceptHeader(accept) {
@@ -87,8 +92,61 @@ export function newCookieHeader(cookie) {
         if (cookieValue.length !== 2) { return null; }
         cookies[cookieValue[0].trim()] = cookieValue[1].trim();
     }
-    
     return cookies;
+}
+
+//
+// Request body
+//
+
+// This is a promise that fetches the body from the client. Useful for POST requests for example.
+export function getRequestBody(request) {
+    return new Promise((resolve, reject) => { 
+        // We have to read the body to obtain the parameters.
+        const chunks = [];
+        let size = 0;
+        request.on('data', chunk => { 
+            chunks.push(chunk);
+            size += chunk.length;
+            if (size >= maxPayloadSize) {
+                // We destroy the connection : it might be someone trying to overflow the server's memory to attack it
+                request.connection.destroy();
+                reject(new Error('[Request (API)] Max payload size reached, request aborted !'));
+            }
+        });
+        request.on('end', () => {
+            if (!request.complete) {
+                response.statusCode = badRequest;
+                response.end();
+                reject(new Error('[Request (API)] Request aborted by the client !'));
+            } else {
+                const data = Buffer.concat(chunks).toString();
+                resolve(data);
+            }
+        }); 
+    });
+}
+
+// Parses the body if it is URL-Encoded or a JSON object.
+export async function parseRequestBody(request) {
+    try {
+        let body = await getRequestBody(request);
+        // There are 3 options : the body is invalid, the data is in JSON or the data is URL-Encoded.
+        let type = request.headers['content-type'];
+        switch (type) {
+            case 'application/json':
+                return JSON.parse(body);
+            case 'application/x-www-form-urlencoded':
+                let parameters = newParameters(body);
+                if (parameters === null) { throw new Error('Invalid Body Content Type !'); }
+                return parameters;
+            default:
+                throw new Error('Invalid POST Content Type !');
+        }
+    } catch (error) {
+        console.log('[Request (API)] Error when processing request body : ', error);
+        return null;
+    }
 }
 
 

@@ -26,7 +26,6 @@ export async function handle(request, response) {
         case '':
             // We know from URL validation that this HAS to be the last fragment of the URL if it is empty
             // In other words, the URL has to be '/'
-            console.log('main');
             ok(response);
             break;
         case 'api':

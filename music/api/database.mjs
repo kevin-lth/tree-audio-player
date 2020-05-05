@@ -1,5 +1,6 @@
 import sqlite from 'sqlite';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 import { newAccount } from '../common/models.mjs';
 
@@ -14,11 +15,13 @@ export async function newConnection() {
                 `CREATE TABLE IF NOT EXISTS account (
                     account_id INTEGER PRIMARY KEY,
                     username TEXT NOT NULL UNIQUE,
+                    is_admin INTEGER NOT NULL DEFAULT 0,
                     hashed_password TEXT NOT NULL
                 );`),
             createSessionTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS session (
-                    account_id INTEGER PRIMARY KEY,
+                    session_id INTEGER PRIMARY KEY,
+                    account_id INTEGER NOT NULL,
                     token TEXT NOT NULL UNIQUE,
                     expires INT NOT NULL,
                     FOREIGN KEY (account_id) REFERENCES account (account_id) ON DELETE CASCADE
@@ -88,7 +91,7 @@ export async function newConnection() {
                 );`),
         };
         
-        let statements;
+        let statements = null;
         
         async function initDatabase() {
             await init_statements.enableForeignKeys.run();
@@ -107,13 +110,15 @@ export async function newConnection() {
             // We now prepare the statements related to the tables.
             statements = {
                 createAccount: await db.prepare('INSERT INTO account (username, hashed_password) VALUES ($username, $hashed_password);'),
-                getAccount: await db.prepare(''),
-                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password FROM account WHERE username=$username;'),
-                updateAccount: await db.prepare(''),
-                deleteSession: await db.prepare(''),
-                getSession: await db.prepare(''),
-                getSessionFromToken: await db.prepare(''),
-                deleteSession: await db.prepare(''),
+                getAccount: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE account_id=$account_id;'),
+                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE username=$username;'),
+                updateAccount: await db.prepare('UPDATE account SET username=$username, hashed_password=$hashed_password WHERE account_id=$account_id;'),
+                deleteAccount: await db.prepare('DELETE FROM account WHERE account_id=$account_id;'),
+                // 172800 seconds = 2 weeks
+                createSession: await db.prepare('INSERT INTO session (account_id, token, expires) VALUES ($account_id, $token, strftime("%s", "now") + 172800);'),
+                getSession: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE session_id=$session_id;'),
+                getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token=$token;'),
+                deleteSession: await db.prepare('DELETE FROM session WHERE session_id=$session_id;'),
             };
         }
         await initDatabase();
@@ -132,60 +137,108 @@ export async function newConnection() {
             // The salt is stored inside the string, so we don't have to worry about storing it ourselves
             let hashed_password = await bcrypt.hash(account.password, 12);
             try {
-                await statements.createAccount.run({ $username: account.name, $hashed_password: hashed_password });
+                await statements.createAccount.run({ $username: account.username, $hashed_password: hashed_password });
+                return true;
             } catch (error) {
-                console.log(`[Database] createAccount failed ! username = ${account.name}, error = ${error}`);
+                console.log(`[Database] createAccount failed ! username = ${account.username}, error = ${error}`);
+                return false;
             }
         }
         
         async function getAccount(account_id) {
-            
-        }
-        
-        async function checkAccountCredentials(account) {
             try {
-                let db_account = await statements.getAccountFromUsername.get({ $username: account.name });
-                let known_username = db_account !== undefined;
-                // The reason we do NOT return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
-                let check = await bcrypt.compare(account.password, db_account.hashed_password);
-                return known_username && check;
+                let account = await statements.getAccount.get({ $account_id: account_id });
+                if (account === undefined) { return null; }
+                else { return account; }
             } catch (error) {
-                console.log(`[Database] checkAccountCredentials failed ! username = ${account.name}, error = ${error}`);
+                console.log(`[Database] getAccount failed ! account_id = ${account_id}, error = ${error}`);
+                return null;
             }
         }
         
-        async function updateAccount(account) {
-            
+        // Returns the account's ID if valid, or -1 otherwise.
+        async function checkAccountCredentials(account) {
+            try {
+                let db_account = await statements.getAccountFromUsername.get({ $username: account.username });
+                let known_username = db_account !== undefined;
+                // The reason we do NOT return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
+                let check = await bcrypt.compare(account.password, db_account.hashed_password);
+                if (known_username && check) { return db_account.account_id; } 
+                else { return -1; }
+            } catch (error) {
+                console.log(`[Database] checkAccountCredentials failed ! username = ${account.username}, error = ${error}`);
+                return -1;
+            }
+        }
+        
+        async function updateAccount(account_id, updated_account) {
+            try {
+                let hashed_password = await bcrypt.hash(updated_account.password, 12);
+                await statements.getAccount.run({ $account_id: account_id, $username: updated_account.username, $hashed_password: hashed_password });
+                return true;
+            } catch (error) {
+                console.log(`[Database] updateAccount failed ! account_id = ${account_id}, updated_username = ${updated_account.username}, error = ${error}`);
+                return false;
+            }
         }
         
         async function deleteAccount(account_id) {
-            
+            try {
+                await statements.deleteAccount.run({ $account_id: account_id });
+                return true;
+            } catch (error) {
+                console.log(`[Database] deleteAccount failed ! account_id = ${account_id}, error = ${error}`);
+                return false;
+            }
         }
         
         // Session
         
         async function createSession(account_id) {
-        
+            try {
+                let token = crypto.randomBytes(32).toString('hex').slice(0, 64);
+                await statements.createSession.run({ $account_id: account_id, $token: token });
+                return token;
+            } catch (error) {
+                console.log(`[Database] createSession failed ! account_id = ${account_id}, error = ${error}`);
+                return null;
+            }
         }
         
-        async function getCurrentToken(account_id) {
-        
+        async function getSessionFromToken(token) {
+            try {
+                // We need to check that the token is valid and that it hasn't expired
+                let session = await statements.getSessionFromToken.get({ $token: token});
+                if (session === undefined) { return null };
+                let timestamp = Math.floor(new Date() / 1000);
+                if (timestamp > session.expires) {
+                    // The token has expired. We revoke the session to not clog the database, since we know it's now invalid.
+                    revokeSession(session.session_id);
+                    return null;
+                }
+                if (session === undefined) { return null; }
+                else { return session; }
+            } catch (error) {
+                console.log(`[Database] getAccountFromToken failed ! error = ${error}`);
+                return null;
+            }
         }
         
-        async function getAccountFromToken(token) {
-            // TODO
-            // We need to check that the token is still valid...
-        }
-        
-        async function revokeSession(account_id) {
-        
+        async function revokeSession(session_id) {
+            try {
+                await statements.deleteSession.run({ $session_id: session_id });
+                return true;
+            } catch (error) {
+                console.log(`[Database] revokeSession failed ! session_id = ${session_id}, error = ${error}`);
+                return false;
+            }
         }
         
         // Category
         
         // Music
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getCurrentToken, getAccountFromToken, revokeSession };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};
