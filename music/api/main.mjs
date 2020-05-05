@@ -94,7 +94,6 @@ async function getSession(request) {
         token = cookies['token'];
     }
     if (token === null || !connection.available ) { return null; }
-    console.log(token);
     return await connection.getSessionFromToken(token);
 }
 
@@ -106,7 +105,6 @@ async function status(method, session, parameters, request, response) {
     response.statusCode = OK;
     if (method !== 'HEAD') {
         if (session !== null) {
-            console.log(session);
             let account = await connection.getAccount(session.account_id);
             if (account !== null) {
                 response.write(JSON.stringify({ username: account.username }));
