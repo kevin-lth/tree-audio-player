@@ -14,6 +14,7 @@ let routes = {
         logout: logout
     },
     category: {
+        cover: category_cover,
         resource: category_resource,
     },
     music: {
@@ -184,6 +185,21 @@ async function logout(method, session, parameters, request, response) {
         let done = await connection.revokeSession(session.session_id);
         if (done) { response.statusCode = OK; }
         else { response.statusCode = internalServerError; }
+        response.end();
+    } else {
+        response.statusCode = unauthorized;
+        response.end();
+    }
+}
+
+async function category_cover(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET', 'POST'];
+    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+
+    if (session !== null) {
+        // TODO
+        response.statusCode = 200;
+        response.write(JSON.stringify({}));
         response.end();
     } else {
         response.statusCode = unauthorized;

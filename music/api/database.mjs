@@ -2,6 +2,8 @@ import sqlite from 'sqlite';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
+import { newCategory } from '../common/models.mjs';
+ 
 export async function newConnection() {
     try {
         const db = await sqlite.open('./database.sqlite');
@@ -29,7 +31,7 @@ export async function newConnection() {
                     category_id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
                     short_name TEXT NOT NULL UNIQUE,
-                    cover_id INTEGER NOT NULL
+                    cover_url TEXT DEFAULT NULL
                 );`),
             createMusicTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS music (
@@ -72,13 +74,6 @@ export async function newConnection() {
                     FOREIGN KEY (music_id) REFERENCES music (music_id) ON DELETE CASCADE,
                     FOREIGN KEY (tag_id) REFERENCES tag (tag_id) ON DELETE CASCADE
                 );`),
-            createCategoryCoverURlTable: await db.prepare(
-                `CREATE TABLE IF NOT EXISTS category_cover_urls (
-                    category_cover_url_id INTEGER PRIMARY KEY,
-                    category_id INTEGER NOT NULL UNIQUE,
-                    url TEXT NOT NULL,
-                    FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE
-                );`),
             createMusicURlTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS music_urls (
                     music_url_id INTEGER PRIMARY KEY,
@@ -102,21 +97,34 @@ export async function newConnection() {
             await init_statements.createAccountCategoriesTable.run();
             await init_statements.createCategoryLinksTable.run();
             await init_statements.createMusicTagsTable.run();
-            await init_statements.createCategoryCoverURlTable.run();
             await init_statements.createMusicURlTable.run();
             console.log('[Database] Database created ! (ignore if it already existed before)');
             // We now prepare the statements related to the tables.
             statements = {
                 createAccount: await db.prepare('INSERT INTO account (username, hashed_password) VALUES ($username, $hashed_password);'),
-                getAccount: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE account_id=$account_id;'),
-                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE username=$username;'),
-                updateAccount: await db.prepare('UPDATE account SET username=$username, hashed_password=$hashed_password WHERE account_id=$account_id;'),
-                deleteAccount: await db.prepare('DELETE FROM account WHERE account_id=$account_id;'),
+                getAccount: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE account_id = $account_id;'),
+                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE username = $username;'),
+                updateAccount: await db.prepare('UPDATE account SET username=$username, hashed_password=$hashed_password WHERE account_id = $account_id;'),
+                deleteAccount: await db.prepare('DELETE FROM account WHERE account_id = $account_id;'),
                 // 172800 seconds = 2 weeks
                 createSession: await db.prepare('INSERT INTO session (account_id, token, expires) VALUES ($account_id, $token, strftime("%s", "now") + 172800);'),
-                getSession: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE session_id=$session_id;'),
-                getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token=$token;'),
-                deleteSession: await db.prepare('DELETE FROM session WHERE session_id=$session_id;'),
+                getSession: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE session_id = $session_id;'),
+                getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token = $token;'),
+                deleteSession: await db.prepare('DELETE FROM session WHERE session_id = $session_id;'),
+                createCategory: await db.prepare('INSERT INTO category (name, short_name) VALUES ($name, $short_name);'),
+                getCategory: await db.prepare('SELECT category_id, name, short_name, cover_url FROM category WHERE category_id = $category_id;'),
+                getAllCategoryChildren: await db.prepare(
+                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                        INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
+                        WHERE category.category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
+                getDirectCategoryChildren: await db.prepare(
+                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                        INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
+                        WHERE category.category_id = $category_id AND category_links.depth = 1;`),
+                getCategorySymlinks: await db.prepare(
+                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                        INNER JOIN category_links ON category.category_id = category_links.child_category_id 
+                        WHERE category.category_id = $category_id AND category_links.depth = 0;`),
             };
         }
         await initDatabase();
@@ -166,7 +174,7 @@ export async function newConnection() {
             try {
                 const db_account = await statements.getAccountFromUsername.get({ $username: account.username });
                 const known_username = db_account !== undefined;
-                // The reason we do NOT return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
+                // The reason we don't return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
                 const check = await bcrypt.compare(account.password, db_account.hashed_password);
                 if (known_username && check) { return db_account.account_id; } 
                 else { return -1; }
@@ -241,12 +249,42 @@ export async function newConnection() {
         
         // Category
         
-        async function addCategory(name, short_name) {
-            
+        async function createCategory(name, short_name) {
+            try {
+                await statements.createCategory.run({ $name: name, $short_name: short_name });
+                return await getLastID();
+            } catch (error) {
+                console.log(`[Database] createCategory failed ! name = ${name}, short_name = ${short_name}, error = ${error}`);
+                return -1;
+            }
         }
         
-        async function getCategory(category_id) {
-        
+        async function getCategory(category_id, include_children = false, only_direct_children = true) {
+            try {
+                const category = await statements.getCategory.get({ $category_id: category_id });
+                if (category === undefined) { return null; }
+                else {
+                    function getCategoryObjectFromResult(category_result, children) {
+                        return newCategory(category_result.category_id, category_result.name, category_result.short_name, children, category_result.cover_url);
+                    }
+                    children = undefined;
+                    if (include_children) {
+                        children = [];
+                        let category_children;
+                        if (only_direct_children) { await statements.getDirectCategoryChildren.all({ $category_id: category_id }); }
+                        else { await statements.getAllCategoryChildren.all({ $category_id: category_id }); }
+                        let current_depth = -1;
+                        // The children are ordered by decreasing depth
+                        for (let i = 0; i < category_children.length; i++) {
+                            children.push(getCategoryObjectFromResult(category_children[i], undefined));
+                        }
+                        return getCategoryObjectFromResult(category, children);
+                    }
+                }
+            } catch (error) {
+                console.log(`[Database] getCategory failed ! category_id = ${account_id}, error = ${error}`);
+                return null;
+            }
         }
         
         async function updateCategory(category) {
@@ -254,10 +292,6 @@ export async function newConnection() {
         }
         
         async function removeCategory(category_id) {
-        
-        }
-        
-        async function setCategoryCover(category_id, cover_url) {
         
         }
         
@@ -269,6 +303,8 @@ export async function newConnection() {
         
         }
         
+        // It is important to note that this link doesn't go both way : the idea is to make sure that if music is separated in both folders, one (the endpoint) 'inherits' the content of the other.
+        // For instance, this can be used in the following case : a CD was originally released, and then it was included in a special collector CD that also contains a bonus track linked to that CD. Here, we can create a category for both the normal and collector CD and proceed from there. If it the link went both way, this scenario wouldn't be handled gracefully as the bonus track would 'bleed' into the original CD's category. 
         async function symlinkCategory(origin_category_id, endpoint_category_id) {
         
         }
@@ -283,7 +319,7 @@ export async function newConnection() {
         
         // Music
         
-        async function addMusic(name, category_id, track, is_public = false, account_id) {
+        async function createMusic(name, category_id, track, is_public = false, account_id) {
         
         }
         
