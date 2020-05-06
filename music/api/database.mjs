@@ -45,7 +45,7 @@ export async function newConnection() {
             createTagTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS tag (
                     tag_id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL
+                    name TEXT NOT NULL UNIQUE
                 );`),
             createAccountCategoriesTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS account_categories (
@@ -128,24 +128,31 @@ export async function newConnection() {
             await db.close();
         }
         
+        // Very unideal to use, however in this context no one else should use the DB anyway because of file locking.
+        async function getLastID() {
+            // This statement isn't prepared because preparing it executes it properly once only, returning undefined in later calls.
+            const result = await db.get('SELECT last_insert_rowid();');
+            return result['last_insert_rowid()'];
+        }
+        
         // Account
         
         async function createAccount(account) {
             // We assume that account is using the power class defined earlier, and so we don't have to do sanity checks again.
             // The salt is stored inside the string, so we don't have to worry about storing it ourselves
-            let hashed_password = await bcrypt.hash(account.password, 12);
+            const hashed_password = await bcrypt.hash(account.password, 12);
             try {
                 await statements.createAccount.run({ $username: account.username, $hashed_password: hashed_password });
-                return true;
+                return await getLastID();
             } catch (error) {
                 console.log(`[Database] createAccount failed ! username = ${account.username}, error = ${error}`);
-                return false;
+                return -1;
             }
         }
         
         async function getAccount(account_id) {
             try {
-                let account = await statements.getAccount.get({ $account_id: account_id });
+                const account = await statements.getAccount.get({ $account_id: account_id });
                 if (account === undefined) { return null; }
                 else { return account; }
             } catch (error) {
@@ -157,10 +164,10 @@ export async function newConnection() {
         // Returns the account's ID if valid, or -1 otherwise.
         async function checkAccountCredentials(account) {
             try {
-                let db_account = await statements.getAccountFromUsername.get({ $username: account.username });
-                let known_username = db_account !== undefined;
+                const db_account = await statements.getAccountFromUsername.get({ $username: account.username });
+                const known_username = db_account !== undefined;
                 // The reason we do NOT return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
-                let check = await bcrypt.compare(account.password, db_account.hashed_password);
+                const check = await bcrypt.compare(account.password, db_account.hashed_password);
                 if (known_username && check) { return db_account.account_id; } 
                 else { return -1; }
             } catch (error) {
@@ -171,7 +178,7 @@ export async function newConnection() {
         
         async function updateAccount(account_id, updated_account) {
             try {
-                let hashed_password = await bcrypt.hash(updated_account.password, 12);
+                const hashed_password = await bcrypt.hash(updated_account.password, 12);
                 await statements.getAccount.run({ $account_id: account_id, $username: updated_account.username, $hashed_password: hashed_password });
                 return true;
             } catch (error) {
@@ -194,7 +201,7 @@ export async function newConnection() {
         
         async function createSession(account_id) {
             try {
-                let token = crypto.randomBytes(32).toString('hex').slice(0, 64);
+                const token = crypto.randomBytes(32).toString('hex').slice(0, 64);
                 await statements.createSession.run({ $account_id: account_id, $token: token });
                 return token;
             } catch (error) {
@@ -206,9 +213,9 @@ export async function newConnection() {
         async function getSessionFromToken(token) {
             try {
                 // We need to check that the token is valid and that it hasn't expired
-                let session = await statements.getSessionFromToken.get({ $token: token});
+                const session = await statements.getSessionFromToken.get({ $token: token});
                 if (session === undefined) { return null };
-                let timestamp = Math.floor(new Date() / 1000);
+                const timestamp = Math.floor(new Date() / 1000);
                 if (timestamp > session.expires) {
                     // The token has expired. We revoke the session to not clog the database, since we know it's now invalid.
                     revokeSession(session.session_id);
@@ -266,6 +273,14 @@ export async function newConnection() {
         
         }
         
+        async function grantCategoryAccess(category_id, account_id) {
+        
+        }
+        
+        async function revokeCategoryAccess(category_id, account_id) {
+        
+        }
+        
         // Music
         
         async function addMusic(name, category_id, track, is_public = false, account_id) {
@@ -296,13 +311,15 @@ export async function newConnection() {
         
         }
         
-        // Transversal
-        
-        async function grantCategoryAccess(category_id, account_id) {
+        async function addTag(name) {
         
         }
         
-        async function revokeCategoryAccess(category_id, account_id) {
+        async function getTagFromName(name) {
+        
+        }
+        
+        async function setMusicTag(music_id, tag_id) {
         
         }
         

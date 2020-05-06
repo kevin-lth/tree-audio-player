@@ -139,8 +139,8 @@ async function register(method, session, parameters, request, response) {
         response.statusCode = badRequest;
         response.end(); 
     } else {
-        let done = await connection.createAccount(account);
-        if (done) { response.statusCode = OK }
+        let account_id = await connection.createAccount(account);
+        if (account_id !== -1) { response.statusCode = OK }
         else { response.statusCode = internalServerError }
         response.end()
     }
