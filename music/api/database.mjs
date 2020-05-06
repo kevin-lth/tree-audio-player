@@ -234,7 +234,77 @@ export async function newConnection() {
         
         // Category
         
+        async function addCategory(name, short_name) {
+            
+        }
+        
+        async function getCategory(category_id) {
+        
+        }
+        
+        async function updateCategory(category) {
+        
+        }
+        
+        async function removeCategory(category_id) {
+        
+        }
+        
+        async function setCategoryCover(category_id, cover_url) {
+        
+        }
+        
+        async function bindCategoryToParent(category_id, parent_category_id) {
+        
+        }
+        
+        async function unbindCategoryFromParent(category_id) {
+        
+        }
+        
+        async function symlinkCategory(origin_category_id, endpoint_category_id) {
+        
+        }
+        
         // Music
+        
+        async function addMusic(name, category_id, track, is_public = false, account_id) {
+        
+        }
+        
+        async function getMusic(music_id) {
+        
+        }
+        
+        async function updateMusic(music) {
+        
+        }
+        
+        async function deleteMusic(music_id) {
+        
+        }
+        
+        async function addMusicFormatAndURL(music_id, format, music_url) {
+        
+        }
+        
+        async function getMusicFormatsAndURLs(music_id) {
+        
+        }
+        
+        async function removeMusicFormat(music_id, format) {
+        
+        }
+        
+        // Transversal
+        
+        async function grantCategoryAccess(category_id, account_id) {
+        
+        }
+        
+        async function revokeCategoryAccess(category_id, account_id) {
+        
+        }
         
         return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession };
     } catch (exception) {
