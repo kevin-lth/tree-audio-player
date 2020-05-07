@@ -27,25 +27,18 @@ let connection;
 
 // Deal with a request.
 export async function handle(url, request, response) {
-    if (connection === undefined || !connection.available) {
-        // We open a connection if we don't have one or the previous one is closed.
-        connection = await newConnection();
-    }
+    // We open a connection if we don't have one or the previous one is closed.
+    if (connection === undefined || !connection.available) { connection = await newConnection(); }
     let acceptTypes = newAcceptHeader(request.headers['accept']);
-    if (acceptTypes === null) {
-        bodylessResponse(badRequest, response);
-        return;
-    }
+    if (acceptTypes === null) { bodylessResponse(badRequest, response); return; }
     let method = request.headers[':method'];
     let session = await getSession(request);
     console.log(`[Request (API)] ${method} /${url.paths.join('/')}`);
     console.log('[Request (API)] URL Parameters: ', url.parameters);
+    
     // We check to see if the client accepts a JSON and set every response to be a JSON
     // There is one exception to this content-type, however it will be dealt in the function responsible for this type of request
-    if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) {
-        bodylessResponse(notAcceptable, response);
-        return;
-    }
+    if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) { bodylessResponse(notAcceptable, response); return; }
     response.setHeader('Content-Type', 'application/json');
 
     let currentRoutes = routes;
@@ -57,23 +50,12 @@ export async function handle(url, request, response) {
             if (result instanceof Function) {
                 // We recognize that this is the end of a route, but we still have to check if the URL ends here as well.
                 // We could support having routes that corresponds to incomplete URL, however since this isn't necessary with this configuration
-
                 // We could check directly the length of the array of the path and its first value. Since we won't be using this URL again, we can just read shift the array and see if it is empty
-                if (url.shift() === '') { 
-                    await result(method, session, url.parameters, request, response);
-                    processed = true;
-                } else {
-                    bodylessResponse(notFound, response);
-                    processed = true;
-                }
-            } else {
-                // The route is still incomplete. We can go on shifting the array, as the path will be empty if it reaches the end
-                currentRoutes = result;
-            }
-        } else {
-            bodylessResponse(notFound, response);
-            processed = true;
-        }
+                if (url.shift() === '') { await result(method, session, url.parameters, request, response); }
+                else { bodylessResponse(notFound, response); }
+                processed = true;
+            } else { currentRoutes = result; } // The route is still incomplete. We can go on shifting the array, as the path will be empty if it reaches the end
+        } else { bodylessResponse(notFound, response); processed = true; }
     }
 }
 
@@ -84,13 +66,11 @@ async function getSession(request) {
     let authorization = newAuthorizationHeader(request.headers['authorization']);
     let cookies = newCookieHeader(request.headers['cookie']);
     let token = null;
-    if (authorization !== null && authorization.type === 'Bearer') {
-        token = authorization.token;
-    } else if (cookies !== null && cookies['token'] !== undefined) {
-        token = cookies['token'];
-    }
+    if (authorization !== null && authorization.type === 'Bearer') { token = authorization.token; }
+    else if (cookies !== null && cookies['token'] !== undefined) { token = cookies['token']; }
+    
     if (token === null || !connection.available ) { return null; }
-    return await connection.getSessionFromToken(token);
+    else { return await connection.getSessionFromToken(token); }
 }
 
 // TODO : Every function below (and more) properly
@@ -98,9 +78,9 @@ async function getSession(request) {
 async function status(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    if (method === 'HEAD') {
-        bodylessResponse(OK, response);
-    } else { 
+    
+    if (method === 'HEAD') { bodylessResponse(OK, response); }
+    else { 
         let body = "{ username: null }"; // Unnecessary to stringify each time to same object
         if (session !== null) {
             let account = await connection.getAccount(session.account_id);
