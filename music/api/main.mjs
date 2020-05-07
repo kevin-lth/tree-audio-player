@@ -1,4 +1,4 @@
-import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, parseRequestBody } from './../utils.mjs'
+import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
 import { newConnection } from './database.mjs';
 
 import { newAccount } from '../common/models.mjs';
@@ -33,7 +33,7 @@ export async function handle(url, request, response) {
     }
     let acceptTypes = newAcceptHeader(request.headers['accept']);
     if (acceptTypes === null) {
-        error(badRequest, response);
+        bodylessResponse(badRequest, response);
         return;
     }
     let method = request.headers[':method'];
@@ -43,7 +43,7 @@ export async function handle(url, request, response) {
     // We check to see if the client accepts a JSON and set every response to be a JSON
     // There is one exception to this content-type, however it will be dealt in the function responsible for this type of request
     if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) {
-        error(notAcceptable, response);
+        bodylessResponse(notAcceptable, response);
         return;
     }
     response.setHeader('Content-Type', 'application/json');
@@ -63,7 +63,7 @@ export async function handle(url, request, response) {
                     await result(method, session, url.parameters, request, response);
                     processed = true;
                 } else {
-                    error(notFound, response);
+                    bodylessResponse(notFound, response);
                     processed = true;
                 }
             } else {
@@ -71,15 +71,10 @@ export async function handle(url, request, response) {
                 currentRoutes = result;
             }
         } else {
-            error(notFound, response);
+            bodylessResponse(notFound, response);
             processed = true;
         }
     }
-}
-
-function error(errorCode, response) {
-    response.statusCode = errorCode;
-    response.end();
 }
 
 async function getSession(request) {
@@ -102,153 +97,133 @@ async function getSession(request) {
 
 async function status(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
-    response.statusCode = OK;
-    if (method !== 'HEAD') {
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
+    if (method === 'HEAD') {
+        bodylessResponse(OK, response);
+    } else { 
+        let body = "{ username: null }"; // Unnecessary to stringify each time to same object
         if (session !== null) {
             let account = await connection.getAccount(session.account_id);
-            if (account !== null) {
-                response.write(JSON.stringify({ username: account.username }));
-            } else {
-                response.write(JSON.stringify({ username: null})); // Shouldn't happen.
-            }
-        } else {
-            response.write(JSON.stringify({ username: null}));
+            if (account !== null) { body = JSON.stringify({ username: account.username }); }
         }
+        bodyResponse(OK, body, response);
     }
-    response.end();
 }
 
 async function register(method, session, parameters, request, response) {
     const validMethods = ['POST'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
-    if (!allowRegistration && !(session !== null && session.is_admin) ) {
-        response.statusCode = badRequest;
-        response.end();
-        return;
-    }
+    if (!allowRegistration && !(session !== null && session.is_admin) ) { bodylessResponse(badRequest, response); return; }
     // We have to get the request's body. We ignore the URL's parameters.
     let body_parameters = await parseRequestBody(request);
-    if (body_parameters === null) {
-        response.statusCode = badRequest;
-        response.end();
-        return;
-    }
+    if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
+    
     let account = newAccount(body_parameters['username'], body_parameters['password']);
-    if (account === null) {
-        response.statusCode = badRequest;
-        response.end(); 
-    } else {
-        let account_id = await connection.createAccount(account);
-        if (account_id !== -1) { response.statusCode = OK }
-        else { response.statusCode = internalServerError }
-        response.end()
+    if (account === null) { bodylessResponse(badRequest, response); } 
+    else {
+        let account_id = await connection.createAccount(account), status_code;
+        if (account_id !== -1) { status_code = OK } else { status_code = internalServerError }
+        bodylessResponse(status_code, response);
     }
 }
 
 async function login(method, session, parameters, request, response) { // We ignore the URL Parameters intentionally, as the password would be visible on-screen (via the URL) by the end-user.
     const validMethods = ['POST'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     // We have to get the request's body. We ignore the URL's parameters.
     let body_parameters = await parseRequestBody(request);
-    if (body_parameters === null) {
-        response.statusCode = badRequest;
-        response.end();
-        return;
-    }
+    if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
     
     let account = newAccount(body_parameters['username'], body_parameters['password']);
-    if (account === null) { response.statusCode = unauthorized; response.end(); return; }
+    if (account === null) { bodylessResponse(unauthorized, response); return; }
     // Check is the account's ID if the credentials are valid, -1 otherwise
     let check = await connection.checkAccountCredentials(account);
     if (check !== -1) {
-        if (session !== null) {
-            // If the login is successful, we want to revoke the previous session on the server-side.
-            connection.revokeSession(session.session_id);
-        }
+        // If the login is successful, we want to revoke the previous session on the server-side.
+        if (session !== null) { connection.revokeSession(session.session_id); }
         let token = await connection.createSession(check);
-        response.statusCode = OK;
         // 172800 seconds = 2 weeks
         response.setHeader('Set-Cookie', `token=${token}; Max-Age=172800; Secure; HttpOnly`);
-        response.write(JSON.stringify({ token }));
-        response.end();
-    } else { response.statusCode = unauthorized; response.end(); return; }
+        bodyResponse(OK, JSON.stringify({ token }), response);
+    } else { bodylessResponse(unauthorized, response); }
 }
 
 async function logout(method, session, parameters, request, response) {
     const validMethods = ['POST']; // We do not allow the GET and HEAD method here, even if the POST requires no parameters (we won't even bother getting them)
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
-        let done = await connection.revokeSession(session.session_id);
-        if (done) { response.statusCode = OK; }
-        else { response.statusCode = internalServerError; }
-        response.end();
-    } else {
-        response.statusCode = unauthorized;
-        response.end();
-    }
+        let done = await connection.revokeSession(session.session_id), status_code;
+        if (done) { status_code = OK; } else { status_code = internalServerError; }
+        bodylessResponse(status_code, response);
+    } else { bodylessResponse(unauthorized, response); }
 }
 
 async function category_cover(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET', 'POST'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
-
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
+    
     if (session !== null) {
+        const category_id = newInt(parameters['id']);
+        if (category_id === null) { bodylessResponse(badRequest, response); return; }
         // TODO
-        response.statusCode = 200;
-        response.write(JSON.stringify({}));
-        response.end();
-    } else {
-        response.statusCode = unauthorized;
-        response.end();
-    }
+        bodyResponse(OK, '{}', response);
+    } else { bodylessResponse(unauthorized, response); }
 }
 
 async function category_resource(method, session, parameters, request, response) {
+    // Technically not necessary if we were to use the switch-case to handle invalid methods. However, this isn't a major concern 
     const validMethods = ['HEAD', 'GET', 'POST', 'PUT', 'DELETE'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
 
     if (session !== null) {
         // TODO
-        response.statusCode = 200;
-        response.write(JSON.stringify({}));
-        response.end();
-    } else {
-        response.statusCode = unauthorized;
-        response.end();
-    }
+        const category_id = newInt(parameters['id']);
+        switch (method) {
+            case 'HEAD': case 'GET': case 'PUT': case 'DELETE':
+                // We need the category's ID
+                if (category_id === null) { bodylessResponse(badRequest, response); return; }
+                break;
+            case 'HEAD': case 'GET':
+                // We treat them similarly, HEAD being the same as GET but without the body
+                // If we find undefined (aka the value wasn't sent by the client), we apply a default value.
+                if (parameters['include_children'] === undefined) { parameters['include_children'] = false }
+                if (parameters['only_direct_children'] === undefined) { parameters['only_direct_children'] = true } 
+                let include_children = newBoolean(parameters['include_children']), only_direct_children = newBoolean(parameters['only_direct_children']);
+                if (include_children === null || only_direct_children === null) { bodylessResponse(badRequest, response); return; }
+                break;
+            case 'PUT':
+                break;
+            case 'DELETE':
+                break;
+            case 'POST':
+                break;
+            default:
+                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
+        }
+        bodyResponse(OK, '{}', response);
+    } else { bodylessResponse(unauthorized, response); }
 }
 
 async function music_file(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET', 'POST'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
         // TODO
-        response.statusCode = 200;
-        response.write(JSON.stringify({}));
-        response.end();
-    } else {
-        response.statusCode = unauthorized;
-        response.end();
-    }
+        bodyResponse(OK, '{}', response);
+    } else { bodylessResponse(unauthorized, response); }
 }
 
 async function music_resource(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET', 'POST', 'PUT', 'DELETE'];
-    if (validMethods.indexOf(method) === -1) { response.statusCode = methodNotAllowed; response.end(); return; }
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
         // TODO
-        response.statusCode = 200;
-        response.write(JSON.stringify({}));
-        response.end();
-    } else {
-        response.statusCode = unauthorized;
-        response.end();
-    }
+        bodyResponse(OK, '{}', response);
+    } else { bodylessResponse(unauthorized, response); }
 }
 

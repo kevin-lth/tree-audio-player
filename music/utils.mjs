@@ -95,6 +95,27 @@ export function newCookieHeader(cookie) {
     return cookies;
 }
 
+export function newInt(number) {
+    if (number === undefined || number === null || number === '' || isNaN(parameters['id'])) { return null; }
+    else { return parseInt(number); }
+}
+
+export function newBoolean(boolean) {
+    if (boolean === undefined || boolean === null || (boolean !== true && boolean !== false)) { return null; }
+    else { return boolean };
+}
+
+export function bodylessResponse(status_code, response) {
+    response.statusCode = status_code;
+    response.end();
+}
+
+export function bodyResponse(status_code, body, response) {
+    response.statusCode = status_code;
+    response.write(body);
+    response.end();
+}
+
 //
 // Request body
 //
@@ -120,7 +141,7 @@ export function getRequestBody(request) {
                 response.end();
                 reject(new Error('[Request (API)] Request aborted by the client !'));
             } else {
-                const data = Buffer.concat(chunks).toString();
+                const data = Buffer.concat(chunks);
                 resolve(data);
             }
         }); 
@@ -130,7 +151,7 @@ export function getRequestBody(request) {
 // Parses the body if it is URL-Encoded or a JSON object.
 export async function parseRequestBody(request) {
     try {
-        let body = await getRequestBody(request);
+        let body = (await getRequestBody(request)).toString();
         // There are 3 options : the body is invalid, the data is in JSON or the data is URL-Encoded.
         let type = request.headers['content-type'];
         switch (type) {

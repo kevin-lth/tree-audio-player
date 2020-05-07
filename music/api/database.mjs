@@ -265,7 +265,7 @@ export async function newConnection() {
                 if (category === undefined) { return null; }
                 else {
                     function getCategoryObjectFromResult(category_result, children) {
-                        return newCategory(category_result.category_id, category_result.name, category_result.short_name, children, category_result.cover_url);
+                        return newCategory(category_result.category_id, category_result.name, category_result.short_name, children);
                     }
                     children = undefined;
                     if (include_children) {

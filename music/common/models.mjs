@@ -9,12 +9,11 @@ export function newAccount(username, password) {
     }
 }
 
-export function newCategory(reference, name, short_name, children, cover_reference) {
+export function newCategory(reference, name, short_name, children) {
     // children is supposed to be a list of categories, whether they are direct or undirect compared to this category.
     // It MAY be undefined if this list is unimportant (e.g. if we add a new category to the database), but NEVER null
-    // coverReference may be null; in this case there is no specific cover and a default one should be used by the client
     // TODO : Validity check
-    return { reference, name, shortName, children, coverReference };
+    return { reference, name, shortName, children };
 }
 
 export function newMusic(reference, name, tags, category, track, is_public, uploader) {
