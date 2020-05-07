@@ -29,6 +29,9 @@ let connection;
 export async function handle(url, request, response) {
     // We open a connection if we don't have one or the previous one is closed.
     if (connection === undefined || !connection.available) { connection = await newConnection(); }
+    // End everything if we have no connection.
+    if (!connection.available) { bodylessResponse(internalServerError, response); return; }
+    
     let acceptTypes = newAcceptHeader(request.headers['accept']);
     if (acceptTypes === null) { bodylessResponse(badRequest, response); return; }
     let method = request.headers[':method'];
@@ -173,6 +176,15 @@ async function category_resource(method, session, parameters, request, response)
                 if (parameters['only_direct_children'] === undefined) { parameters['only_direct_children'] = true } 
                 let include_children = newBoolean(parameters['include_children']), only_direct_children = newBoolean(parameters['only_direct_children']);
                 if (include_children === null || only_direct_children === null) { bodylessResponse(badRequest, response); return; }
+                // We can not cut corners here, unfortunately. Since HEAD means GET without the body, we have to go through with the database request to be consistent.
+                // For instance, if the category doesn't exist, we have to throw an error regardless of the HTTP method.
+
+                // First of all, let's check that this session has the right to access this category.
+                const category = connection.getCategory(category_id); let status_code;
+                if (category === null) { status_code = unauthorized }
+                else { status_code = OK }
+                if (method === 'HEAD' || status_code !== OK) { bodylessResponse(status_code, response) }
+                else { bodyResponse(status_code, JSON.stringify(category), response) } // Has to be GET
                 break;
             case 'PUT':
                 break;
