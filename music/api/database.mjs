@@ -29,7 +29,7 @@ export async function newConnection() {
             createCategoryTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS category (
                     category_id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE,
+                    full_name TEXT NOT NULL UNIQUE,
                     short_name TEXT NOT NULL UNIQUE,
                     is_public INTEGER NOT NULL DEFAULT 0,
                     creator_id INTEGER NOT NULL,
@@ -111,52 +111,56 @@ export async function newConnection() {
                 getSession: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE session_id = $session_id;'),
                 getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token = $token;'),
                 deleteSession: await db.prepare('DELETE FROM session WHERE session_id = $session_id;'),
-                createCategory: await db.prepare('INSERT INTO category (name, short_name) VALUES ($name, $short_name);'),
-                getCategory: await db.prepare('SELECT category_id, name, short_name, is_public, creator_id, cover_url FROM category WHERE category_id = $category_id;'),
+                createCategory: await db.prepare('INSERT INTO category (full_name, short_name, is_public, creator_id) VALUES ($full_name, $short_name, $is_public, $creator_id);'),
+                createZeroCategoryLink: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($category_id, $category_id, 0)'),
+                getCategory: await db.prepare('SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE category_id = $category_id;'),
                 getParentCategory: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = 1;`),
                 checkParentCategory: await db.prepare(
-                    `SELECT COUNT(1) FROM category 
+                    `SELECT COUNT(1) AS checkCount FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = 1;`),
                 getAllCategoryChildren: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
-                        INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
-                        WHERE category.category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
-                getAllCategoryDirectChildren: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
-                        INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
-                        WHERE category.category_id = $category_id AND category_links.depth = 1;`),
-                getCategorySymlinks: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.category_id = $category_id AND category_links.depth = 0;`),
-                updateCategory: await db.prepare('UPDATE category SET name=$name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
+                        WHERE category_links.parent_category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
+                getAllCategoryDirectChildren: await db.prepare(
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                        INNER JOIN category_links ON category.category_id = category_links.child_category_id 
+                        WHERE category_links.parent_category_id = $category_id AND category_links.depth = 1;`),
+                getCategorySymlinks: await db.prepare(
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                        INNER JOIN category_links ON category.category_id = category_links.child_category_id 
+                        WHERE category.category_id = $category_id AND category_links.depth = -1;`),
+                updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
-                createCategoryLink: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($parent_category_id, $child_category_id, 1)'),
                 rebuildCategoryLinkTreeAfterCreation: await db.prepare(
                     `INSERT INTO category_links (parent_category_id, child_category_id, depth) 
                         SELECT top_links.parent_category_id, bottom_links.child_category_id, top_links.depth+1+bottom_links.depth
-                        FROM category_links AS bottom_links INNER JOIN category_links AS top_links ON top_links.child_category_id=$parent_category_id
-                        WHERE bottom_links.parent_category_id=$child_category_id AND bottom_links.depth > 0`),
+                        FROM category_links AS bottom_links, category_links AS top_links WHERE top_links.child_category_id=$parent_category_id AND top_links.depth >= 0
+                        AND bottom_links.parent_category_id=$child_category_id AND bottom_links.depth >= 0`),
                 unbindCategoryFromParent: await db.prepare(
                     `DELETE FROM category_links WHERE parent_category_id NOT IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth > 0) AND child_category_id IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth > 0)`),
-                createSymlinkCategory: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, 0)'),
+                createSymlinkCategory: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, -1)'),
                 checkSymlinkCategory: await db.prepare(
-                    `SELECT COUNT(1) FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = 0`),
+                    `SELECT COUNT(1) AS checkCount FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1`),
                 deleteSymlinkCategory: await db.prepare(
-                    `DELETE FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = 0`),
+                    `DELETE FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1`),
                 createCategoryAccess: await db.prepare('INSERT INTO account_categories (account_id, category_id) VALUES ($account_id, $category_id)'),
+                // The reason we split the exists this way is to make sure we don't join the account_categories table, which MAY be empty and threfore nullify the check when it should have been valid.
                 checkCategoryAccess: await db.prepare(
-                    `SELECT COUNT(1) FROM account_categories WHERE $account_id IN (SELECT account_id FROM account WHERE is_admin=1) OR (account_id=$account_id AND 
-                        (category_id=$category_id OR category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))) OR
-                        $account_id IN (SELECT creator_id FROM category WHERE category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))`),
+                    `SELECT COUNT(1) AS checkCount FROM category WHERE EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id)
+                        OR EXISTS(SELECT 1 FROM category WHERE creator_id=$account_id AND category_id 
+                            IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))
+                        OR EXISTS(SELECT 1 FROM account_categories WHERE account_id=$account_id AND 
+                            category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))`),
                 checkCategoryOwnership: await db.prepare(
-                    `SELECT COUNT(1) FROM category WHERE category_id=$category_id AND (creator_id=$account_id OR $account_id IN (SELECT account_id FROM account WHERE is_admin=1))`),
+                    `SELECT COUNT(1) AS checkCount FROM category WHERE (category_id=$category_id AND 
+                        creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id)`),
                 deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id`),
             };
         }
@@ -284,15 +288,17 @@ export async function newConnection() {
         
         // Util function
         function __getCategoryObjectFromResult(category_result, children) {
-            return newCategory(category_result.category_id, category_result.name, category_result.short_name, category_result.is_public, category_result.creator_id, children);
+            return newCategory(category_result.category_id, category_result.full_name, category_result.short_name, category_result.is_public === 1, category_result.creator_id, children);
         }
         
-        async function createCategory(name, short_name) {
+        async function createCategory(category) {
             try {
-                await statements.createCategory.run({ $name: name, $short_name: short_name });
-                return await getLastID();
+                await statements.createCategory.run({ $full_name: category.full_name, $short_name: category.short_name, $is_public: category.is_public, $creator_id: category.creator_id });
+                const category_id = await getLastID();
+                await statements.createZeroCategoryLink.run({ $category_id: category_id });
+                return category_id;
             } catch (error) {
-                console.log(`[Database] createCategory failed ! name = ${name}, short_name = ${short_name}, error = ${error}`);
+                console.log(`[Database] createCategory failed ! full_name = ${category.full_name}, short_name = ${category.short_name}, is_public = ${category.is_public}, creator_id = ${category.creator_id}, error = ${error}`);
                 return -1;
             }
         }
@@ -302,19 +308,19 @@ export async function newConnection() {
                 const category = await statements.getCategory.get({ $category_id: category_id });
                 if (category === undefined) { return null; }
                 else {
-                    children = undefined;
+                    let children = undefined;
                     if (include_children) {
                         children = [];
                         let category_children;
-                        if (only_direct_children) { await statements.getAllCategoryDirectChildren.all({ $category_id: category_id }); }
-                        else { await statements.getAllCategoryChildren.all({ $category_id: category_id }); }
+                        if (only_direct_children) { category_children = await statements.getAllCategoryDirectChildren.all({ $category_id: category_id }); }
+                        else { category_children = await statements.getAllCategoryChildren.all({ $category_id: category_id }); }
                         let current_depth = -1;
                         // The children are ordered by decreasing depth
                         for (let i = 0; i < category_children.length; i++) {
                             children.push(__getCategoryObjectFromResult(category_children[i], undefined));
                         }
-                        return __getCategoryObjectFromResult(category, children);
                     }
+                    return __getCategoryObjectFromResult(category, children);
                 }
             } catch (error) {
                 console.log(`[Database] getCategory failed ! category_id = ${category_id}, error = ${error}`);
@@ -325,11 +331,11 @@ export async function newConnection() {
         async function updateCategory(category_id, updated_category) {
             try {
                 await statements.updateCategory.run({ 
-                    $category_id: category_id, $name: updated_category.name, $short_name: updated_category.short_name, $is_public: updated_category.is_public
+                    $category_id: category_id, $full_name: updated_category.full_name, $short_name: updated_category.short_name, $is_public: updated_category.is_public
                 });
                 return true;
             } catch (error) {
-                console.log(`[Database] updateCategory failed ! category_id = ${category_id}, updated_name = ${updated_category.name}, updated_short_name = ${updated_category.short_name}, updated_is_public = ${updated_category.is_public}, error = ${error}`);
+                console.log(`[Database] updateCategory failed ! category_id = ${category_id}, updated_name = ${updated_category.full_name}, updated_short_name = ${updated_category.short_name}, updated_is_public = ${updated_category.is_public}, error = ${error}`);
                 return false;
             }
         }
@@ -350,9 +356,7 @@ export async function newConnection() {
         async function bindCategoryToParent(child_category_id, parent_category_id) {
             try {
                 await unbindCategoryFromParent(child_category_id);
-                // This first statement create the direct link between parent and child : since the depth 0 where parent and child are the same doesn't exist in the DB to avoid confusion with symlinks, the second statement doesn't cover this case.
-                await statements.createCategoryLink.run({ $parent_category_id: parent_category_id, $child_category_id: child_category_id });
-                // This second statements creates all links that relate to all of the category's children and ancestors, setting the depth by summing the known
+                // This statement creates all links that relate to all of the category's children and ancestors, setting the depth by summing the known ones
                 await statements.rebuildCategoryLinkTreeAfterCreation.run({ $parent_category_id: parent_category_id, $child_category_id: child_category_id });
                 return true;
             } catch (error) {
@@ -367,7 +371,7 @@ export async function newConnection() {
                 if (parent_category === undefined) { return null; }
                 else { return __getCategoryObjectFromResult(parent_category, undefined); }
             } catch (error) {
-                console.log(`[Database] getCategoryParent failed ! category_id = ${category_id}, error = ${error}`);
+                console.log(`[Database] getParentCategory failed ! category_id = ${category_id}, error = ${error}`);
                 return false;
             }
         }
@@ -375,9 +379,9 @@ export async function newConnection() {
         async function checkParentCategory(category_id) {
             try {
                 let check = await statements.checkParentCategory.get({ $category_id: category_id });
-                return check > 0;
+                return check['checkCount'] > 0;
             } catch (error) {
-                console.log(`[Database] checkCategoryParent failed ! category_id = ${category_id}, error = ${error}`);
+                console.log(`[Database] checkParentCategory failed ! category_id = ${category_id}, error = ${error}`);
                 return false;
             }
         }
@@ -385,7 +389,7 @@ export async function newConnection() {
         async function unbindCategoryFromParent(category_id) {
             try {
                 // We check before attempting to unbind if it is necessary in order to save resources, as this operation is not lightweight : the list of impacted categories must be determined (= one subquery) and then all links that imply a category not impacted must be deleted to cut off the category from the tree.
-                if (await checkCategoryParent(category_id)) { await statements.unbindCategoryFromParent({ $category_id: category_id }) }
+                if (await checkParentCategory(category_id)) { await statements.unbindCategoryFromParent.run({ $category_id: category_id }); }
                 return true;
             } catch (error) {
                 console.log(`[Database] unbindCategoryFromParent failed ! category_id = ${category_id}, error = ${error}`);
@@ -407,8 +411,8 @@ export async function newConnection() {
         
         async function checkSymlinkCategory(origin_category_id, endpoint_category_id) {
             try {
-                const result = await statements.checkSymlinkCategory.run({ $origin_category_id: origin_category_id, $endpoint_category_id: endpoint_category_id });
-                return result > 0;
+                const result = await statements.checkSymlinkCategory.get({ $origin_category_id: origin_category_id, $endpoint_category_id: endpoint_category_id });
+                return result['checkCount'] > 0;
             } catch (error) {
                 console.log(`[Database] checkSymlinkCategory failed ! origin_category_id = ${origin_category_id}, endpoint_category_id = ${endpoint_category_id}, error = ${error}`);
                 return false;
@@ -455,8 +459,8 @@ export async function newConnection() {
         // Doesn't only check the direct grant, but also if any parents' access has been granted to this account or that the account hasn't created any categories that is this one or one of its ancestors.
         async function checkCategoryAccess(category_id, account_id) {
             try {
-                const result = await statements.checkCategoryAccess.run({ $account_id: account_id, $category_id: category_id });
-                return result > 0;
+                const result = await statements.checkCategoryAccess.get({ $account_id: account_id, $category_id: category_id });
+                return result['checkCount'] > 0;
             } catch (error) {
                 console.log(`[Database] checkCategoryAccess failed ! account_id = ${account_id}, category_id = ${category_id}, error = ${error}`);
                 return false;
@@ -464,8 +468,8 @@ export async function newConnection() {
         }
         async function checkCategoryOwnership(category_id, account_id) {
             try {
-                const result = await statements.checkCategoryOwnership.run({ $account_id: account_id, $category_id: category_id });
-                return result > 0;
+                const result = await statements.checkCategoryOwnership.get({ $account_id: account_id, $category_id: category_id });
+                return result['checkCount'] > 0;
             } catch (error) {
                 console.log(`[Database] checkCategoryOwnership failed ! account_id = ${account_id}, category_id = ${category_id}, error = ${error}`);
                 return false;

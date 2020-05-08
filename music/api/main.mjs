@@ -1,7 +1,7 @@
 import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
 import { newConnection } from './database.mjs';
 
-import { newAccount, newCategory, newMusic } from '../common/models.mjs';
+import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
 let OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 let allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
@@ -165,17 +165,10 @@ async function category_resource(method, session, parameters, request, response)
 
     if (session !== null) {
         let done;
-        const category_id = newInt(parameters['id']);
+        let category_id = newInt(parameters['id']); // Can't be a constant in the case of POST
         switch (method) {
-            case 'HEAD': case 'GET': case 'PUT': case 'DELETE':
-                // We need the category's ID for those methods
-                if (category_id === null) { bodylessResponse(badRequest, response); return; }
-                break;
-            case 'PUT': case 'DELETE':
-                // We need to check if the session owns this category
-                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
             case 'HEAD': case 'GET':
-                // We need to check if the session has access to this category
+                if (category_id === null) { bodylessResponse(badRequest, response); return; }
                 if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
                 // We treat them similarly, HEAD being the same as GET but without the body
                 // If we find undefined (aka the value wasn't sent by the client), we apply a default value.
@@ -185,25 +178,28 @@ async function category_resource(method, session, parameters, request, response)
                 if (include_children === null || only_direct_children === null) { bodylessResponse(badRequest, response); return; }
                 // We can't cut corners here, unfortunately. Since HEAD means GET without the body, we have to go through with the database request to be consistent.
                 // For instance, if the category doesn't exist, we have to throw an error regardless of the HTTP method.
-
                 // First of all, let's check that this session has the right to access this category.
-                const category = connection.getCategory(category_id); let status_code;
-                if (category === null) { status_code = unauthorized }
-                else { status_code = OK }
-                if (method === 'HEAD' || status_code !== OK) { bodylessResponse(status_code, response) }
+                const category = await connection.getCategory(category_id, include_children, only_direct_children);
+                let status_code;
+                if (category === null) { status_code = badRequest; }
+                else { status_code = OK; }
+                if (method === 'HEAD' || status_code !== OK) { bodylessResponse(status_code, response); }
                 else { bodyResponse(status_code, JSON.stringify(category), response) } // Has to be GET
                 break;
-            case 'POST': case 'PUT':
+            case 'PUT':
+                if (category_id === null) { bodylessResponse(badRequest, response); return; }
+                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
+            case 'POST': 
                 // We need to check that we are either an admin or
                 let body_parameters = await parseRequestBody(request);
                 if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
                 // We ignore the ID if it is included in the body; we want it in the URL
                 let updated_category = newIDlessCategory(body_parameters['name'], body_parameters['short_name'], body_parameters['is_public'], session.account_id, undefined);
                 if (updated_category === null) { bodylessResponse(badRequest, response); return; }
-                
                 // The reason for checking the parent ID right now is to avoid doing any operation on the DB if it happens that the session isn't allowed to do it
-                let parent_category_id = newInt(body_parameters['parent_id']);
-                if (!(await connection.checkCategoryOwnership(parent_category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
+                let parent_category_id = newInt(body_parameters['parent_id']); // -1 means no parent
+                if (parent_category_id !== null && parent_category_id !== -1 &&
+                    !(await connection.checkCategoryOwnership(parent_category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
                 
                 if (method === 'POST') {
                     category_id = await connection.createCategory(updated_category);
@@ -211,17 +207,19 @@ async function category_resource(method, session, parameters, request, response)
                 }
                 else { done = await connection.updateCategory(category_id, updated_category); }
                 
-                if (done) {
+                if (done && parent_category_id !== null) {
                     // We also need to handle adding / changing the parent here if specified.
-                    let current_parent_category = await connection.getCategoryParent(category_id);
-                    if (body_parameters['parent_id'] === undefined && current_parent_category !== null) { done = await connection.unbindCategoryFromParent(category_id) }
-                    else if (parent_category_id !== null && parent_category_id !== current_parent_category.id) { done = await connection.bindCategoryFromParent(category_id, parent_category_id) }
+                    let current_parent_category = await connection.getParentCategory(category_id);
+                    if (parent_category_id === -1 && current_parent_category !== null) { done = await connection.unbindCategoryFromParent(category_id) }
+                    else if (parent_category_id !== -1 && (current_parent_category === null || parent_category_id !== current_parent_category.id)) { done = await connection.bindCategoryToParent(category_id, parent_category_id) }
                 }
                 
                 if (done) { bodylessResponse(OK, response); return; }
                 else { bodylessResponse(internalServerError, response); return; }
                 break;
             case 'DELETE':
+                if (category_id === null) { bodylessResponse(badRequest, response); return; }
+                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
                 done = await connection.deleteCategory(category_id);
                 if (done) { bodylessResponse(OK, response); return; }
                 else { bodylessResponse(internalServerError, response); return; }

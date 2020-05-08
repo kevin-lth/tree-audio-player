@@ -96,12 +96,13 @@ export function newCookieHeader(cookie) {
 }
 
 export function newInt(number) {
-    if (number === undefined || number === null || number === '' || isNaN(parameters['id'])) { return null; }
+    if (number === undefined || number === null || number === '' || isNaN(number)) { return null; }
     else { return parseInt(number); }
 }
 
 export function newBoolean(boolean) {
-    if (boolean === undefined || boolean === null || (boolean !== true && boolean !== false)) { return null; }
+    if (boolean === undefined || boolean === null || (boolean !== true && boolean !== 'true' && boolean !== false && boolean !== 'false')) { return null; }
+    else if (boolean === 'true') { return true; } else if (boolean === 'false') { return false; } 
     else { return boolean };
 }
 
