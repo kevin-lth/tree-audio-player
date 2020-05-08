@@ -116,12 +116,12 @@ export async function newConnection() {
                 getCategory: await db.prepare('SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE category_id = $category_id;'),
                 getParentCategory: await db.prepare(
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
-                        INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.category_id = $category_id AND category_links.depth = 1;`),
+                        INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
+                        WHERE category_links.child_category_id = $category_id AND category_links.depth = 1;`),
                 checkParentCategory: await db.prepare(
                     `SELECT COUNT(1) AS checkCount FROM category 
-                        INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.category_id = $category_id AND category_links.depth = 1;`),
+                        INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
+                        WHERE category_links.child_category_id = $category_id AND category_links.depth = 1;`),
                 getAllCategoryChildren: await db.prepare(
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
@@ -143,8 +143,8 @@ export async function newConnection() {
                         AND bottom_links.parent_category_id=$child_category_id AND bottom_links.depth >= 0`),
                 unbindCategoryFromParent: await db.prepare(
                     `DELETE FROM category_links WHERE parent_category_id NOT IN 
-                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth > 0) AND child_category_id IN 
-                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth > 0)`),
+                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth >= 0) AND child_category_id IN 
+                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth >= 0)`),
                 createSymlinkCategory: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, -1)'),
                 checkSymlinkCategory: await db.prepare(
                     `SELECT COUNT(1) AS checkCount FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1`),

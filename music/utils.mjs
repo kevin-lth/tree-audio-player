@@ -1,4 +1,4 @@
-const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/;
+const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonWebCharacters = /^[\w|\h|\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;;
 const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, maxPayloadSize = 1e6;
 const validAuthorizationMethod = ['Bearer'];
 
@@ -43,7 +43,7 @@ export function newParameters(urlencoded_parameters) {
     let endPathParameters = urlencoded_parameters.split('&');
     for (let i = 0; i < endPathParameters.length; i++) {
         let data = endPathParameters[i].split('=');
-        if (data.length !== 2 || data[0].match(alphanumeric) === null || data[1].match(alphanumeric) === null) { return null; }
+        if (data.length !== 2 || data[0].match(alphanumericAndNonWebCharacters) === null || data[1].match(alphanumericAndNonWebCharacters) === null) { return null; }
         parameters[data[0]] = data[1]; // It is important that parameters remain case sensitive ! (e.g. passwords)
     }
     return parameters;

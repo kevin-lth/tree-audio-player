@@ -194,7 +194,7 @@ async function category_resource(method, session, parameters, request, response)
                 let body_parameters = await parseRequestBody(request);
                 if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
                 // We ignore the ID if it is included in the body; we want it in the URL
-                let updated_category = newIDlessCategory(body_parameters['name'], body_parameters['short_name'], body_parameters['is_public'], session.account_id, undefined);
+                let updated_category = newIDlessCategory(body_parameters['full_name'], body_parameters['short_name'], body_parameters['is_public'], session.account_id, undefined);
                 if (updated_category === null) { bodylessResponse(badRequest, response); return; }
                 // The reason for checking the parent ID right now is to avoid doing any operation on the DB if it happens that the session isn't allowed to do it
                 let parent_category_id = newInt(body_parameters['parent_id']); // -1 means no parent
@@ -210,8 +210,8 @@ async function category_resource(method, session, parameters, request, response)
                 if (done && parent_category_id !== null) {
                     // We also need to handle adding / changing the parent here if specified.
                     let current_parent_category = await connection.getParentCategory(category_id);
-                    if (parent_category_id === -1 && current_parent_category !== null) { done = await connection.unbindCategoryFromParent(category_id) }
-                    else if (parent_category_id !== -1 && (current_parent_category === null || parent_category_id !== current_parent_category.id)) { done = await connection.bindCategoryToParent(category_id, parent_category_id) }
+                    if (parent_category_id === -1 && current_parent_category !== null) { done = await connection.unbindCategoryFromParent(category_id); }
+                    else if (parent_category_id !== -1 && (current_parent_category === null || parent_category_id !== current_parent_category.id)) { done = await connection.bindCategoryToParent(category_id, parent_category_id); }
                 }
                 
                 if (done) { bodylessResponse(OK, response); return; }
