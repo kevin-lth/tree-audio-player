@@ -32,6 +32,7 @@ export async function newConnection() {
                     name TEXT NOT NULL UNIQUE,
                     short_name TEXT NOT NULL UNIQUE,
                     is_public INTEGER NOT NULL DEFAULT 0,
+                    creator_id INTEGER NOT NULL,
                     cover_url TEXT DEFAULT NULL
                 );`),
             createMusicTable: await db.prepare(
@@ -40,7 +41,6 @@ export async function newConnection() {
                     name TEXT NOT NULL,
                     track INTEGER NOT NULL,
                     category_id INTEGER NOT NULL,
-                    uploader_id INTEGER NOT NULL,
                     FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE,
                     FOREIGN KEY (uploader_id) REFERENCES account (account_id) ON DELETE CASCADE
                 );`),
@@ -112,25 +112,25 @@ export async function newConnection() {
                 getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token = $token;'),
                 deleteSession: await db.prepare('DELETE FROM session WHERE session_id = $session_id;'),
                 createCategory: await db.prepare('INSERT INTO category (name, short_name) VALUES ($name, $short_name);'),
-                getCategory: await db.prepare('SELECT category_id, name, short_name, cover_url FROM category WHERE category_id = $category_id;'),
+                getCategory: await db.prepare('SELECT category_id, name, short_name, is_public, creator_id, cover_url FROM category WHERE category_id = $category_id;'),
                 getParentCategory: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = 1;`),
                 checkParentCategory: await db.prepare(
-                    `SELECT COUNT(category.category_id) FROM category 
+                    `SELECT COUNT(1) FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = 1;`),
                 getAllCategoryChildren: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
                 getAllCategoryDirectChildren: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = 1;`),
                 getCategorySymlinks: await db.prepare(
-                    `SELECT category.category_id, category.name, category.short_name, category.cover_url FROM category 
+                    `SELECT category.category_id, category.name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = 0;`),
                 updateCategory: await db.prepare('UPDATE category SET name=$name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
@@ -145,12 +145,19 @@ export async function newConnection() {
                     `DELETE FROM category_links WHERE parent_category_id NOT IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth > 0) AND child_category_id IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth > 0)`),
-                addSymlinkCategory: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, 0)'),
+                createSymlinkCategory: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, 0)'),
                 checkSymlinkCategory: await db.prepare(
-                    `SELECT COUNT(parent_category_id) FROM category_links 
-                        WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = 0`),
+                    `SELECT COUNT(1) FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = 0`),
                 deleteSymlinkCategory: await db.prepare(
                     `DELETE FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = 0`),
+                createCategoryAccess: await db.prepare('INSERT INTO account_categories (account_id, category_id) VALUES ($account_id, $category_id)'),
+                checkCategoryAccess: await db.prepare(
+                    `SELECT COUNT(1) FROM account_categories WHERE $account_id IN (SELECT account_id FROM account WHERE is_admin=1) OR (account_id=$account_id AND 
+                        (category_id=$category_id OR category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))) OR
+                        $account_id IN (SELECT creator_id FROM category WHERE category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))`),
+                checkCategoryOwnership: await db.prepare(
+                    `SELECT COUNT(1) FROM category WHERE category_id=$category_id AND (creator_id=$account_id OR $account_id IN (SELECT account_id FROM account WHERE is_admin=1))`),
+                deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id`),
             };
         }
         await initDatabase();
@@ -275,6 +282,11 @@ export async function newConnection() {
         
         // Category
         
+        // Util function
+        function __getCategoryObjectFromResult(category_result, children) {
+            return newCategory(category_result.category_id, category_result.name, category_result.short_name, category_result.is_public, category_result.creator_id, children);
+        }
+        
         async function createCategory(name, short_name) {
             try {
                 await statements.createCategory.run({ $name: name, $short_name: short_name });
@@ -290,9 +302,6 @@ export async function newConnection() {
                 const category = await statements.getCategory.get({ $category_id: category_id });
                 if (category === undefined) { return null; }
                 else {
-                    function getCategoryObjectFromResult(category_result, children) {
-                        return newCategory(category_result.category_id, category_result.name, category_result.short_name, children);
-                    }
                     children = undefined;
                     if (include_children) {
                         children = [];
@@ -302,9 +311,9 @@ export async function newConnection() {
                         let current_depth = -1;
                         // The children are ordered by decreasing depth
                         for (let i = 0; i < category_children.length; i++) {
-                            children.push(getCategoryObjectFromResult(category_children[i], undefined));
+                            children.push(__getCategoryObjectFromResult(category_children[i], undefined));
                         }
-                        return getCategoryObjectFromResult(category, children);
+                        return __getCategoryObjectFromResult(category, children);
                     }
                 }
             } catch (error) {
@@ -352,10 +361,31 @@ export async function newConnection() {
             }
         }
         
+        async function getParentCategory(category_id) {
+            try {
+                let parent_category = await statements.getParentCategory.get({ $category_id: category_id });
+                if (parent_category === undefined) { return null; }
+                else { return __getCategoryObjectFromResult(parent_category, undefined); }
+            } catch (error) {
+                console.log(`[Database] getCategoryParent failed ! category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
+        }
+        
+        async function checkParentCategory(category_id) {
+            try {
+                let check = await statements.checkParentCategory.get({ $category_id: category_id });
+                return check > 0;
+            } catch (error) {
+                console.log(`[Database] checkCategoryParent failed ! category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
+        }
+        
         async function unbindCategoryFromParent(category_id) {
             try {
                 // We check before attempting to unbind if it is necessary in order to save resources, as this operation is not lightweight : the list of impacted categories must be determined (= one subquery) and then all links that imply a category not impacted must be deleted to cut off the category from the tree.
-                if (await statements.checkParentCategory.get({ $category_id: category_id }) > 0) { await statements.unbindCategoryFromParent({ $category_id: category_id }) }
+                if (await checkCategoryParent(category_id)) { await statements.unbindCategoryFromParent({ $category_id: category_id }) }
                 return true;
             } catch (error) {
                 console.log(`[Database] unbindCategoryFromParent failed ! category_id = ${category_id}, error = ${error}`);
@@ -367,7 +397,7 @@ export async function newConnection() {
         // For instance, this can be used in the following case : a CD was originally released, and then it was included in a special collector CD that also contains a bonus track linked to that CD. Here, we can create a category for both the normal and collector CD and proceed from there. If it the link went both way, this scenario wouldn't be handled gracefully as the bonus track would 'bleed' into the original CD's category. 
         async function addSymlinkCategory(origin_category_id, endpoint_category_id) {
             try {
-                await statements.addSymlinkCategory.run({ $origin_category_id: origin_category_id, $endpoint_category_id: endpoint_category_id });
+                await statements.createSymlinkCategory.run({ $origin_category_id: origin_category_id, $endpoint_category_id: endpoint_category_id });
                 return true;
             } catch (error) {
                 console.log(`[Database] addSymlinkCategory failed ! origin_category_id = ${origin_category_id}, endpoint_category_id = ${endpoint_category_id}, error = ${error}`);
@@ -390,12 +420,9 @@ export async function newConnection() {
                 const symlink_category_result = await statements.getCategorySymlinks.all({ $category_id: endpoint_category_id });
                 if (category === undefined) { return []; }
                 else {
-                    function getCategoryObjectFromResult(category_result, children) {
-                        return newCategory(category_result.category_id, category_result.name, category_result.short_name, children);
-                    }
                     const symlink_categories = [];
                     for (let i = 0; i < symlink_category_result.length; i++) {
-                        symlink_categories.push(getCategoryObjectFromResult(symlink_category_result[i], undefined));
+                        symlink_categories.push(__getCategoryObjectFromResult(symlink_category_result[i], undefined));
                     }
                     return symlink_categories;
                 }
@@ -416,15 +443,44 @@ export async function newConnection() {
         }
         
         async function grantCategoryAccess(category_id, account_id) {
-        
+            try {
+                await statements.createCategoryAccess.run({ $account_id: account_id, $category_id: category_id });
+                return true;
+            } catch (error) {
+                console.log(`[Database] grantCategoryAccess failed ! account_id = ${account_id}, category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
         }
         
+        // Doesn't only check the direct grant, but also if any parents' access has been granted to this account or that the account hasn't created any categories that is this one or one of its ancestors.
         async function checkCategoryAccess(category_id, account_id) {
-        
+            try {
+                const result = await statements.checkCategoryAccess.run({ $account_id: account_id, $category_id: category_id });
+                return result > 0;
+            } catch (error) {
+                console.log(`[Database] checkCategoryAccess failed ! account_id = ${account_id}, category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
+        }
+        async function checkCategoryOwnership(category_id, account_id) {
+            try {
+                const result = await statements.checkCategoryOwnership.run({ $account_id: account_id, $category_id: category_id });
+                return result > 0;
+            } catch (error) {
+                console.log(`[Database] checkCategoryOwnership failed ! account_id = ${account_id}, category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
         }
         
+        // Only removes direct access from the category : this will do nothing if the category is granted through one of its parents or "creation right" 
         async function revokeCategoryAccess(category_id, account_id) {
-        
+            try {
+                await statements.deleteCategoryAccess.run({ $account_id: account_id, $category_id: category_id });
+                return true;
+            } catch (error) {
+                console.log(`[Database] revokeCategoryAccess failed ! account_id = ${account_id}, category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
         }
         
         // Music
@@ -469,7 +525,7 @@ export async function newConnection() {
         
         }
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, bindCategoryToParent, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, revokeCategoryAccess };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};

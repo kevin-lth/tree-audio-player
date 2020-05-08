@@ -1,21 +1,23 @@
 import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
 import { newConnection } from './database.mjs';
 
-import { newAccount } from '../common/models.mjs';
+import { newAccount, newCategory, newMusic } from '../common/models.mjs';
 
 let OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 let allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
 let routes = {
-    status: status,
     account: {
-        register: register,
-        login: login,
-        logout: logout
+        status: account_status,
+        register: account_register,
+        login: account_login,
+        logout: account_logout,
     },
     category: {
         cover: category_cover,
         resource: category_resource,
+        public: category_public,
+        personal: category_personal,
     },
     music: {
         file: music_file,
@@ -78,7 +80,7 @@ async function getSession(request) {
 
 // TODO : Every function below (and more) properly
 
-async function status(method, session, parameters, request, response) {
+async function account_status(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
@@ -93,11 +95,11 @@ async function status(method, session, parameters, request, response) {
     }
 }
 
-async function register(method, session, parameters, request, response) {
+async function account_register(method, session, parameters, request, response) {
+    // TODO : Implement better mitigation to limit account creation
+    if (!allowRegistration && session !== null) { bodylessResponse(notFound, response); return; }
     const validMethods = ['POST'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (!allowRegistration && !(session !== null && session.is_admin) ) { bodylessResponse(badRequest, response); return; }
     // We have to get the request's body. We ignore the URL's parameters.
     let body_parameters = await parseRequestBody(request);
     if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
@@ -111,7 +113,7 @@ async function register(method, session, parameters, request, response) {
     }
 }
 
-async function login(method, session, parameters, request, response) { // We ignore the URL Parameters intentionally, as the password would be visible on-screen (via the URL) by the end-user.
+async function account_login(method, session, parameters, request, response) { // We ignore the URL Parameters intentionally, as the password would be visible on-screen (via the URL) by the end-user.
     const validMethods = ['POST'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
@@ -133,7 +135,7 @@ async function login(method, session, parameters, request, response) { // We ign
     } else { bodylessResponse(unauthorized, response); }
 }
 
-async function logout(method, session, parameters, request, response) {
+async function account_logout(method, session, parameters, request, response) {
     const validMethods = ['POST']; // We do not allow the GET and HEAD method here, even if the POST requires no parameters (we won't even bother getting them)
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
@@ -162,14 +164,19 @@ async function category_resource(method, session, parameters, request, response)
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
 
     if (session !== null) {
-        // TODO
+        let done;
         const category_id = newInt(parameters['id']);
         switch (method) {
             case 'HEAD': case 'GET': case 'PUT': case 'DELETE':
-                // We need the category's ID
+                // We need the category's ID for those methods
                 if (category_id === null) { bodylessResponse(badRequest, response); return; }
                 break;
+            case 'PUT': case 'DELETE':
+                // We need to check if the session owns this category
+                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
             case 'HEAD': case 'GET':
+                // We need to check if the session has access to this category
+                if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
                 // We treat them similarly, HEAD being the same as GET but without the body
                 // If we find undefined (aka the value wasn't sent by the client), we apply a default value.
                 if (parameters['include_children'] === undefined) { parameters['include_children'] = false }
@@ -186,15 +193,62 @@ async function category_resource(method, session, parameters, request, response)
                 if (method === 'HEAD' || status_code !== OK) { bodylessResponse(status_code, response) }
                 else { bodyResponse(status_code, JSON.stringify(category), response) } // Has to be GET
                 break;
-            case 'PUT':
+            case 'POST': case 'PUT':
+                // We need to check that we are either an admin or
+                let body_parameters = await parseRequestBody(request);
+                if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
+                // We ignore the ID if it is included in the body; we want it in the URL
+                let updated_category = newIDlessCategory(body_parameters['name'], body_parameters['short_name'], body_parameters['is_public'], session.account_id, undefined);
+                if (updated_category === null) { bodylessResponse(badRequest, response); return; }
+                
+                // The reason for checking the parent ID right now is to avoid doing any operation on the DB if it happens that the session isn't allowed to do it
+                let parent_category_id = newInt(body_parameters['parent_id']);
+                if (!(await connection.checkCategoryOwnership(parent_category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
+                
+                if (method === 'POST') {
+                    category_id = await connection.createCategory(updated_category);
+                    done = category_id !== -1;
+                }
+                else { done = await connection.updateCategory(category_id, updated_category); }
+                
+                if (done) {
+                    // We also need to handle adding / changing the parent here if specified.
+                    let current_parent_category = await connection.getCategoryParent(category_id);
+                    if (body_parameters['parent_id'] === undefined && current_parent_category !== null) { done = await connection.unbindCategoryFromParent(category_id) }
+                    else if (parent_category_id !== null && parent_category_id !== current_parent_category.id) { done = await connection.bindCategoryFromParent(category_id, parent_category_id) }
+                }
+                
+                if (done) { bodylessResponse(OK, response); return; }
+                else { bodylessResponse(internalServerError, response); return; }
                 break;
             case 'DELETE':
-                break;
-            case 'POST':
+                done = await connection.deleteCategory(category_id);
+                if (done) { bodylessResponse(OK, response); return; }
+                else { bodylessResponse(internalServerError, response); return; }
                 break;
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
         }
+        bodyResponse(OK, '{}', response);
+    } else { bodylessResponse(unauthorized, response); }
+}
+
+async function category_public(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET'];
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
+    
+    if (session !== null) {
+        // TODO
+        bodyResponse(OK, '{}', response);
+    } else { bodylessResponse(unauthorized, response); }
+}
+
+async function category_personal(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET', 'POST', 'DELETE'];
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
+    
+    if (session !== null) {
+        // TODO
         bodyResponse(OK, '{}', response);
     } else { bodylessResponse(unauthorized, response); }
 }

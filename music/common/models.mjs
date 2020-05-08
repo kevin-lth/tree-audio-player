@@ -9,19 +9,28 @@ export function newAccount(username, password) {
     } else { return null; }
 }
 
-export function newCategory(reference, name, short_name, is_public, children) {
+export function newIDlessCategory(name, short_name, is_public, creator_id, children) {
     // children is supposed to be a list of categories, whether they are direct or undirect compared to this category. It should not be used for anything other than information
     // It may be undefined if this list is unimportant (e.g. if we add a new category to the database), but never null
-    reference = newInt(reference); is_public = newBoolean(is_public);
-    let checked_parent_reference = newInt(parent_reference);
-    if (reference !== null && name.match(alphanumeric_and_non_web_characters) && short_name.match(alphanumeric_and_non_web_characters)
-      && is_public !== null && (children === undefined || Array.isArray(children)) ) {
-        return { reference, name, short_name, is_public, children };
+    let checked_is_public = newBoolean(is_public);
+    if (name.match(alphanumeric_and_non_web_characters) && short_name.match(alphanumeric_and_non_web_characters)
+      && checked_is_public !== null && (children === undefined || Array.isArray(children)) ) {
+        return { name, short_name, checked_is_public, creator_id, children };
     } else { return null; }
 }
 
-export function newMusic(reference, name, tags, category, track, uploader) {
+export function newCategory(id, name, short_name, is_public, creator_id, children) {
+    let category = newIDlessCategory(name, short_name, is_public, children);
+    // We only check the validity of the ID.
+    let checked_id = newInt(id);
+    if (checked_id !== null && category !== null) {
+        category['id'] = checked_id;
+        return category;
+    } else { return null; }
+}
+
+export function newMusic(name, tags, category_id, track) {
     // TODO : Validity check
-    return { reference, name, tags, category, track, uploader };
+    return { name, tags, category_id, track, uploader };
 }
 
