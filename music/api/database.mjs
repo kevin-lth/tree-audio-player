@@ -123,23 +123,25 @@ export async function newConnection() {
                         INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
                         WHERE category_links.child_category_id = $category_id AND category_links.depth = 1;`),
                 getAllCategoryChildren: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category_links.parent_category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
                 getAllCategoryDirectChildren: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category_links.parent_category_id = $category_id AND category_links.depth = 1;`),
                 getCategorySymlinks: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = -1;`),
-                getAllPublicCategories: await db.prepare(`SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE is_public=1;`),
+                getAllPublicCategories: await db.prepare(`SELECT category_id, full_name, short_name, is_public, creator_id FROM category WHERE is_public=1;`),
                 getAllPersonalCategories: await db.prepare(
                     `SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE creator_id=$account_id 
                         OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id);`),
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
+                setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id = $category_id;'),
+                deleteCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=NULL WHERE category_id = $category_id;'),
                 rebuildCategoryLinkTreeAfterCreation: await db.prepare(
                     `INSERT INTO category_links (parent_category_id, child_category_id, depth) 
                         SELECT top_links.parent_category_id, bottom_links.child_category_id, top_links.depth+1+bottom_links.depth
@@ -356,6 +358,26 @@ export async function newConnection() {
             }
         }
         
+        async function setCategoryCoverURL(category_id, cover_url) {
+            try {
+                await statements.setCategoryCoverURL.run({ $category_id: category_id, $cover_url: cover_url });
+                return true;
+            } catch (error) {
+                console.log(`[Database] setCategoryCoverURL failed ! category_id = ${category_id}, cover_url = ${cover_url}, error = ${error}`);
+                return false;
+            }
+        }
+        
+        async function deleteCategoryCoverURL(category_id) {
+            try {
+                await statements.deleteCategoryCoverURL.run({ $category_id: category_id });
+                return true;
+            } catch (error) {
+                console.log(`[Database] setCategoryCoverURL failed ! category_id = ${category_id}, cover_url = ${cover_url}, error = ${error}`);
+                return false;
+            }
+        }
+        
         async function getAllPublicCategories() {
             try {
                 let public_categories = await statements.getAllPublicCategories.all();
@@ -566,7 +588,7 @@ export async function newConnection() {
         
         }
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};

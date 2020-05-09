@@ -1,6 +1,7 @@
-import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
 import { newConnection } from './database.mjs';
+import { getCategoryCover } from './file.mjs';
 
+import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
 let OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
@@ -153,7 +154,16 @@ async function category_cover(method, session, parameters, request, response) {
     if (session !== null) {
         const category_id = newInt(parameters['id']);
         if (category_id === null) { bodylessResponse(badRequest, response); return; }
-        // TODO
+        const category = await connection.getCategory(category_id);
+        if (category === null) { bodylessResponse(badRequest, response); return; }
+        switch (method) {
+            case 'HEAD': case 'GET':
+                break;
+            case 'POST':
+                break;
+            default:
+                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
+        }
         bodyResponse(OK, '{}', response);
     } else { bodylessResponse(unauthorized, response); }
 }
