@@ -22,8 +22,10 @@ async function getDefaultCategoryCover() {
     }
 }
 
-getCategoryCover('I_DO_NOT_EXIST').then((result) => { 
-    console.log(result);
-    easyimage.info('media/music/default_cover.png').then((result, error) => { console.log(result, error); });
+if (false) {
+    getCategoryCover('I_DO_NOT_EXIST').then((result) => { 
+        console.log(result);
+        easyimage.info('media/music/default_cover.png').then((result, error) => { console.log(result, error); });
 });
-//const image_info = await easyimage.info(image_filename);
+}
+
