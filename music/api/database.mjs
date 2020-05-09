@@ -106,8 +106,8 @@ export async function newConnection() {
                 getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE username = $username;'),
                 updateAccount: await db.prepare('UPDATE account SET username=$username, hashed_password=$hashed_password WHERE account_id = $account_id;'),
                 deleteAccount: await db.prepare('DELETE FROM account WHERE account_id = $account_id;'),
-                // 172800 seconds = 2 weeks
-                createSession: await db.prepare('INSERT INTO session (account_id, token, expires) VALUES ($account_id, $token, strftime("%s", "now") + 172800);'),
+                // 1209600 seconds = 2 weeks
+                createSession: await db.prepare('INSERT INTO session (account_id, token, expires) VALUES ($account_id, $token, strftime("%s", "now") + 1209600);'),
                 getSession: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE session_id = $session_id;'),
                 getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token = $token;'),
                 deleteSession: await db.prepare('DELETE FROM session WHERE session_id = $session_id;'),

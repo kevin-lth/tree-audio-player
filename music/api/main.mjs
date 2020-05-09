@@ -130,8 +130,8 @@ async function account_login(method, session, parameters, request, response) { /
         // If the login is successful, we want to revoke the previous session on the server-side.
         if (session !== null) { connection.revokeSession(session.session_id); }
         let token = await connection.createSession(check);
-        // 172800 seconds = 2 weeks
-        response.setHeader('Set-Cookie', `token=${token}; Max-Age=172800; Secure; HttpOnly`);
+        // 1209600 seconds = 2 weeks
+        response.setHeader('Set-Cookie', `token=${token}; Max-Age=1209600; Secure; HttpOnly`);
         bodyResponse(OK, JSON.stringify({ token }), response);
     } else { bodylessResponse(unauthorized, response); }
 }
