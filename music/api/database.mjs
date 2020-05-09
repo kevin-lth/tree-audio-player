@@ -113,7 +113,7 @@ export async function newConnection() {
                 deleteSession: await db.prepare('DELETE FROM session WHERE session_id = $session_id;'),
                 createCategory: await db.prepare('INSERT INTO category (full_name, short_name, is_public, creator_id) VALUES ($full_name, $short_name, $is_public, $creator_id);'),
                 createZeroCategoryLink: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($category_id, $category_id, 0)'),
-                getCategory: await db.prepare('SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE category_id = $category_id;'),
+                getCategory: await db.prepare('SELECT category_id, full_name, short_name, is_public, creator_id FROM category WHERE category_id = $category_id;'),
                 getParentCategory: await db.prepare(
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
@@ -141,6 +141,7 @@ export async function newConnection() {
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
                 setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id = $category_id;'),
+                getCategory: await db.prepare('SELECT cover_url FROM category WHERE category_id = $category_id;'),
                 deleteCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=NULL WHERE category_id = $category_id;'),
                 rebuildCategoryLinkTreeAfterCreation: await db.prepare(
                     `INSERT INTO category_links (parent_category_id, child_category_id, depth) 
@@ -368,12 +369,23 @@ export async function newConnection() {
             }
         }
         
+        async function getCategoryCoverURL(category_id) {
+            try {
+                const cover_url = await statements.getCategoryCoverURL.get({ $category_id: category_id, $cover_url: cover_url });
+                if (cover_url === undefined) { return null; }
+                else { return cover_url; }
+            } catch (error) {
+                console.log(`[Database] setCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
+                return null;
+            }
+        }
+        
         async function deleteCategoryCoverURL(category_id) {
             try {
                 await statements.deleteCategoryCoverURL.run({ $category_id: category_id });
                 return true;
             } catch (error) {
-                console.log(`[Database] setCategoryCoverURL failed ! category_id = ${category_id}, cover_url = ${cover_url}, error = ${error}`);
+                console.log(`[Database] setCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
                 return false;
             }
         }
@@ -588,7 +600,7 @@ export async function newConnection() {
         
         }
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};
