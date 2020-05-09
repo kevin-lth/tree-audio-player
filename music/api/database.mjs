@@ -141,7 +141,7 @@ export async function newConnection() {
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
                 setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id = $category_id;'),
-                getCategory: await db.prepare('SELECT cover_url FROM category WHERE category_id = $category_id;'),
+                getCategoryCoverURL: await db.prepare('SELECT cover_url FROM category WHERE category_id = $category_id;'),
                 deleteCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=NULL WHERE category_id = $category_id;'),
                 rebuildCategoryLinkTreeAfterCreation: await db.prepare(
                     `INSERT INTO category_links (parent_category_id, child_category_id, depth) 
@@ -375,7 +375,7 @@ export async function newConnection() {
                 if (cover_url === undefined) { return null; }
                 else { return cover_url; }
             } catch (error) {
-                console.log(`[Database] setCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
+                console.log(`[Database] getCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
                 return null;
             }
         }

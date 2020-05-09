@@ -1,5 +1,5 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCover } from './file.mjs';
+import { getCategoryCover, getDefaultCategoryCover } from './file.mjs';
 
 import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
@@ -154,10 +154,16 @@ async function category_cover(method, session, parameters, request, response) {
     if (session !== null) {
         const category_id = newInt(parameters['id']);
         if (category_id === null) { bodylessResponse(badRequest, response); return; }
-        const category = await connection.getCategory(category_id);
-        if (category === null) { bodylessResponse(badRequest, response); return; }
         switch (method) {
             case 'HEAD': case 'GET':
+                const cover_url = await connection.getCategoryCoverURL(category_id);
+                let cover;
+                // If it is null, we just send the default cover right away. Otherwise, we try to fetch the corresponding file with the cover URL obtained
+                if (cover_url === null) { cover = await getDefaultCategoryCover(); }
+                else { cover = await getCategoryCover(cover_url); }
+                // We have to change the content-type : we are not sending JSON !
+                response.setHeader('Content-Type', 'image/png');
+                bodyResponse(OK, cover, response);
                 break;
             case 'POST':
                 break;

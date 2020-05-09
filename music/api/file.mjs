@@ -13,7 +13,7 @@ export async function getCategoryCover(cover_url) {
     }
 }
 
-async function getDefaultCategoryCover() {
+export async function getDefaultCategoryCover() {
     try {
         return await fs.readFile('media/music/default_cover.png');
     } catch (error) {
