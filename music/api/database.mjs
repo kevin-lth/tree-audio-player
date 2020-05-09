@@ -134,34 +134,39 @@ export async function newConnection() {
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
                         WHERE category.category_id = $category_id AND category_links.depth = -1;`),
+                getAllPublicCategories: await db.prepare(`SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE is_public=1;`),
+                getAllPersonalCategories: await db.prepare(
+                    `SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE creator_id=$account_id 
+                        OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id);`),
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
                 rebuildCategoryLinkTreeAfterCreation: await db.prepare(
                     `INSERT INTO category_links (parent_category_id, child_category_id, depth) 
                         SELECT top_links.parent_category_id, bottom_links.child_category_id, top_links.depth+1+bottom_links.depth
                         FROM category_links AS bottom_links, category_links AS top_links WHERE top_links.child_category_id=$parent_category_id AND top_links.depth >= 0
-                        AND bottom_links.parent_category_id=$child_category_id AND bottom_links.depth >= 0`),
+                        AND bottom_links.parent_category_id=$child_category_id AND bottom_links.depth >= 0;`),
                 unbindCategoryFromParent: await db.prepare(
                     `DELETE FROM category_links WHERE parent_category_id NOT IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth >= 0) AND child_category_id IN 
-                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth >= 0)`),
-                createSymlinkCategory: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, -1)'),
+                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id AND depth >= 0);`),
+                createSymlinkCategory: await db.prepare(
+                    `INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($origin_category_id, $endpoint_category_id, -1);`),
                 checkSymlinkCategory: await db.prepare(
-                    `SELECT COUNT(1) AS checkCount FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1`),
+                    `SELECT COUNT(1) AS checkCount FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1;`),
                 deleteSymlinkCategory: await db.prepare(
-                    `DELETE FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1`),
-                createCategoryAccess: await db.prepare('INSERT INTO account_categories (account_id, category_id) VALUES ($account_id, $category_id)'),
+                    `DELETE FROM category_links WHERE parent_category_id=$origin_category_id AND child_category_id=$endpoint_category_id AND depth = -1;`),
+                createCategoryAccess: await db.prepare('INSERT INTO account_categories (account_id, category_id) VALUES ($account_id, $category_id);'),
                 // The reason we split the exists this way is to make sure we don't join the account_categories table, which MAY be empty and threfore nullify the check when it should have been valid.
                 checkCategoryAccess: await db.prepare(
                     `SELECT COUNT(1) AS checkCount FROM category WHERE EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id)
                         OR EXISTS(SELECT 1 FROM category WHERE creator_id=$account_id AND category_id 
                             IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))
                         OR EXISTS(SELECT 1 FROM account_categories WHERE account_id=$account_id AND 
-                            category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id))`),
+                            category_id IN (SELECT category_id FROM category_links WHERE child_category_id=$category_id));`),
                 checkCategoryOwnership: await db.prepare(
                     `SELECT COUNT(1) AS checkCount FROM category WHERE (category_id=$category_id AND 
-                        creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id)`),
-                deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id`),
+                        creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id);`),
+                deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id;`),
             };
         }
         await initDatabase();
@@ -314,8 +319,6 @@ export async function newConnection() {
                         let category_children;
                         if (only_direct_children) { category_children = await statements.getAllCategoryDirectChildren.all({ $category_id: category_id }); }
                         else { category_children = await statements.getAllCategoryChildren.all({ $category_id: category_id }); }
-                        let current_depth = -1;
-                        // The children are ordered by decreasing depth
                         for (let i = 0; i < category_children.length; i++) {
                             children.push(__getCategoryObjectFromResult(category_children[i], undefined));
                         }
@@ -349,6 +352,40 @@ export async function newConnection() {
                 return true;
             } catch (error) {
                 console.log(`[Database] deleteCategory failed ! category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
+        }
+        
+        async function getAllPublicCategories() {
+            try {
+                let public_categories = await statements.getAllPublicCategories.all();
+                if (public_categories === undefined) { return null; }
+                else { 
+                    const categories = [];
+                    for (let i = 0; i < public_categories.length; i++) {
+                        categories.push(__getCategoryObjectFromResult(public_categories[i], undefined));
+                    }
+                    return categories;
+                }
+            } catch (error) {
+                console.log(`[Database] getAllPublicCategories failed ! category_id = ${category_id}, error = ${error}`);
+                return false;
+            }
+        }
+        
+        async function getAllPersonalCategories(account_id) {
+            try {
+                let personal_categories = await statements.getAllPersonalCategories.all({ $account_id: account_id });
+                if (personal_categories === undefined) { return null; }
+                else { 
+                    const categories = [];
+                    for (let i = 0; i < personal_categories.length; i++) {
+                        categories.push(__getCategoryObjectFromResult(personal_categories[i], undefined));
+                    }
+                    return categories;
+                }
+            } catch (error) {
+                console.log(`[Database] getAllPublicCategories failed ! category_id = ${category_id}, error = ${error}`);
                 return false;
             }
         }
@@ -529,7 +566,7 @@ export async function newConnection() {
         
         }
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
     } catch (exception) {
         console.log(`[Database Failure] ${exception}`);
         return { available: false};
