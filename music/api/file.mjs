@@ -22,6 +22,16 @@ export async function getDefaultCategoryCover() {
     }
 }
 
+// TODO : Add function to check incoming "cover" and save it
+export async function processCategoryCover(cover) {
+    try {
+        // Do something
+    } catch (error) {
+        console.log(`[File] processCategoryCover failed ! error = ${error}. Ignoring file sent by client.`);
+        return null;
+    }
+}
+
 if (false) {
     getCategoryCover('I_DO_NOT_EXIST').then((result) => { 
         console.log(result);

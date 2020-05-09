@@ -121,8 +121,8 @@ export function bodyResponse(status_code, body, response) {
 // Request body
 //
 
-// This is a promise that fetches the body from the client. Useful for POST requests for example.
-export function getRequestBody(request) {
+// This is a promise that fetches the body from the client. Useful for POST requests for example. The async / await syntax cannot be used here because we rely on event callbacks.
+function __promise__getRequestBody(request) {
     return new Promise((resolve, reject) => { 
         // We have to read the body to obtain the parameters.
         const chunks = [];
@@ -149,12 +149,22 @@ export function getRequestBody(request) {
     });
 }
 
+export async function getRequestBody(request) {
+    try {
+        return await __promise__getRequestBody(request);
+    } catch (error) {
+        console.log('[Request (API)] Error when fetching request body : ', error);
+        return null;
+    }
+}
+
 // Parses the body if it is URL-Encoded or a JSON object.
 export async function parseRequestBody(request) {
+    const data = await getRequestBody(request);
     try {
-        let body = (await getRequestBody(request)).toString();
+        if (data === null) { throw new Error('An error occured when fetching the request\'s body.'); }
+        const body = data.toString(), type = request.headers['content-type'];
         // There are 3 options : the body is invalid, the data is in JSON or the data is URL-Encoded.
-        let type = request.headers['content-type'];
         switch (type) {
             case 'application/json':
                 return JSON.parse(body);

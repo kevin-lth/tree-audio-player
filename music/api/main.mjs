@@ -1,7 +1,8 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCover, getDefaultCategoryCover } from './file.mjs';
+import { getCategoryCover, getDefaultCategoryCover, processCategoryCover } from './file.mjs';
 
-import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, bodylessResponse, bodyResponse, parseRequestBody } from './../utils.mjs'
+import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
+    bodylessResponse, bodyResponse, getRequestBody, parseRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
 let OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
@@ -78,8 +79,6 @@ async function getSession(request) {
     if (token === null || !connection.available ) { return null; }
     else { return await connection.getSessionFromToken(token); }
 }
-
-// TODO : Every function below (and more) properly
 
 async function account_status(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET'];
@@ -166,6 +165,14 @@ async function category_cover(method, session, parameters, request, response) {
                 bodyResponse(OK, cover, response);
                 break;
             case 'POST':
+                const data = await getRequestBody(request);
+                if (data === null) { bodylessResponse(badRequest, response); return; }
+                const new_cover_url = await processCategoryCover(data);
+                if (new_cover_url === null) { bodylessResponse(badRequest, response); }
+                else {
+                    await connection.setCategoryCoverURL(category_id, new_cover_url);
+                    bodylessResponse(OK, response);
+                }
                 break;
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
