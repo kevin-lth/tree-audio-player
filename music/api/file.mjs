@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import easyimage from "easyimage";
+import easyimage from 'easyimage';
 
 const cover_dir = 'media/music/covers/', music_dir = 'media/music/files/', temp_dir = 'temp/';
 

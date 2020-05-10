@@ -2,7 +2,7 @@ import { newConnection } from './database.mjs';
 import { getCategoryCover, getDefaultCategoryCover, processCategoryCover } from './file.mjs';
 
 import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
-    bodylessResponse, bodyResponse, getRequestBody, parseRequestBody } from './../utils.mjs'
+    bodylessResponse, bodyResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
 let OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
@@ -104,10 +104,10 @@ async function account_register(method, session, parameters, request, response) 
     const validMethods = ['POST'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     // We have to get the request's body. We ignore the URL's parameters.
-    let body_parameters = await parseRequestBody(request);
-    if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
+    let data = await getRequestBody(request);
+    if (data === null) { bodylessResponse(badRequest, response); return; }
     
-    let account = newAccount(body_parameters['username'], body_parameters['password']);
+    let account = newAccount(data.getFieldValue('username'), data.getFieldValue('password'));
     if (account === null) { bodylessResponse(badRequest, response); } 
     else {
         let account_id = await connection.createAccount(account), status_code;
@@ -121,10 +121,10 @@ async function account_login(method, session, parameters, request, response) { /
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     // We have to get the request's body. We ignore the URL's parameters.
-    let body_parameters = await parseRequestBody(request);
-    if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
+    let data = await getRequestBody(request);
+    if (data === null) { bodylessResponse(badRequest, response); return; }
     
-    let account = newAccount(body_parameters['username'], body_parameters['password']);
+    let account = newAccount(data.getFieldValue('username'), data.getFieldValue('password'));
     if (account === null) { bodylessResponse(unauthorized, response); return; }
     // Check is the account's ID if the credentials are valid, -1 otherwise
     let check = await connection.checkAccountCredentials(account);
@@ -170,7 +170,7 @@ async function category_cover(method, session, parameters, request, response) {
             case 'POST':
                 const data = await getRequestBody(request);
                 if (data === null) { bodylessResponse(badRequest, response); return; }
-                const new_cover_url = await processCategoryCover(data);
+                const new_cover_url = await processCategoryCover(data.getFileName('cover'));
                 if (new_cover_url === null) { bodylessResponse(badRequest, response); }
                 else {
                     await connection.setCategoryCoverURL(category_id, new_cover_url);
@@ -215,11 +215,12 @@ async function category_resource(method, session, parameters, request, response)
                 if (category_id === null) { bodylessResponse(badRequest, response); return; }
                 if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
             case 'POST': 
-                // We need to check that we are either an admin or
-                let body_parameters = await parseRequestBody(request);
-                if (body_parameters === null) { bodylessResponse(badRequest, response); return; }
+                let data = await getRequestBody(request);
+                if (data === null) { bodylessResponse(badRequest, response); return; }
+                
+                let account = newAccount(data.getFieldValue('username'), data.getFieldValue('password'));
                 // We ignore the ID if it is included in the body; we want it in the URL
-                let updated_category = newIDlessCategory(body_parameters['full_name'], body_parameters['short_name'], body_parameters['is_public'], session.account_id, undefined);
+                let updated_category = newIDlessCategory(data.getFieldValue('full_name'), data.getFieldValue('short_name'), data.getFieldValue('is_public'), session.account_id, undefined);
                 if (updated_category === null) { bodylessResponse(badRequest, response); return; }
                 // The reason for checking the parent ID right now is to avoid doing any operation on the DB if it happens that the session isn't allowed to do it
                 let parent_category_id = newInt(body_parameters['parent_id']); // -1 means no parent

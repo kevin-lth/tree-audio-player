@@ -5,6 +5,8 @@ export function testAll() {
     testDatabase();
 }
 
+// TODO: Write all the tests
+
 function testModels() {
     // Account
     let account1 = newAccount('username1', 'secret');

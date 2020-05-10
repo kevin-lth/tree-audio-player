@@ -1,5 +1,5 @@
 const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonWebCharacters = /^[\w|\h|\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;;
-const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, maxPayloadSize = 1e6;
+const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000;
 const validAuthorizationMethod = ['Bearer'];
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
@@ -122,31 +122,49 @@ export function bodyResponse(status_code, body, response) {
 // Request body
 //
 
-// This is a promise that fetches the body from the client. Useful for POST requests for example. The async / await syntax cannot be used here because we rely on event callbacks.
-function __promise__getRequestBody(request) {
-    return new Promise((resolve, reject) => { 
-        // We have to read the body to obtain the parameters.
-        const chunks = [];
-        let size = 0;
-        request.on('data', chunk => { 
-            chunks.push(chunk);
-            size += Buffer.byteLength(chunk);
-            if (size >= maxPayloadSize) {
-                // We destroy the connection : it might be someone trying to overflow the server's memory to attack it
-                request.connection.destroy();
-                reject(new Error('[Request (API)] Max payload size reached, request aborted !'));
+import fs from 'fs';
+import Busboy from 'busboy';
+import crypto from 'crypto';
+
+const temp_dir = './temp/';
+
+async function __promise__getRequestBody(request) {
+    return new Promise((resolve, reject) => {
+        try {
+            let busboy = new Busboy({ headers: request.headers, limits: { fields: 100, files: 2, fileSize: 10e6 } });
+            
+            function getFieldValue(field) {
+                if (data.rawData['type'] !== 'field') { return null; }
+                else { return data['value']; }
             }
-        });
-        request.on('end', () => {
-            if (!request.complete) {
-                response.statusCode = badRequest;
-                response.end();
-                reject(new Error('[Request (API)] Request aborted by the client !'));
-            } else {
-                const data = Buffer.concat(chunks);
-                resolve(data);
+
+            function getFileName(file) {
+                if (data.rawData['type'] !== 'file') { return null; }
+                else { return data['value']; }
             }
-        }); 
+            
+            let data = { rawData: {}, getFieldValue, getFileName };
+            let stream_promises = [];
+            busboy.on('field', (fieldname, value, fieldname_truncated, val_truncated, encoding, mimetype) => {
+                data.rawData[fieldname] = { type: 'field', value, encoding, mimetype };
+            });
+            busboy.on('file', (fieldname, stream, filename, encoding, mimetype) => {
+                const temp_name = crypto.randomBytes(32).toString('hex').slice(0, 32);
+                // We will save the file in a temporary directory. We ignore the filename for security reasons.
+                // We use piping to directly save the file instead of keeping it into memory
+                let file = fs.createWriteStream(temp_dir + temp_name);
+                stream.pipe(file);
+                data.rawData[fieldname] = { type: 'file', value: temp_name, encoding, mimetype };
+                
+                let stream_promise = new Promise((resolve, reject) => { stream.on('close', () => { resolve(); }); });
+                
+                stream_promises.push(stream_promise); // We store the streams to make sure to not end the promise before the files are saved on the disk
+            });
+            busboy.on('finish', () => {
+                Promise.all(stream_promises).then(() => { resolve(data); });
+            });
+            request.pipe(busboy);
+        } catch (error) { reject(error); }
     });
 }
 
@@ -154,30 +172,7 @@ export async function getRequestBody(request) {
     try {
         return await __promise__getRequestBody(request);
     } catch (error) {
-        console.log('[Request (API)] Error when fetching request body : ', error);
-        return null;
-    }
-}
-
-// Parses the body if it is URL-Encoded or a JSON object.
-export async function parseRequestBody(request) {
-    const data = await getRequestBody(request)[0];
-    try {
-        if (data === null) { throw new Error('An error occured when fetching the request\'s body.'); }
-        const body = data.toString(), type = request.headers['content-type'];
-        // There are 3 options : the body is invalid, the data is in JSON or the data is URL-Encoded.
-        switch (type) {
-            case 'application/json':
-                return JSON.parse(body);
-            case 'application/x-www-form-urlencoded':
-                let parameters = newParameters(body);
-                if (parameters === null) { throw new Error('Invalid Body Content Type !'); }
-                return parameters;
-            default:
-                throw new Error('Invalid POST Content Type !');
-        }
-    } catch (error) {
-        console.log('[Request (API)] Error when processing request body : ', error);
+        console.log('[Request (Body)] Error when obtaining request body : ', error);
         return null;
     }
 }
