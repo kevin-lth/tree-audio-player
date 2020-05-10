@@ -1,12 +1,14 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCover, getDefaultCategoryCover, processCategoryCover } from './file.mjs';
+import { getCategoryCover, getDefaultCategoryCover, processCategoryCover, deleteTempFile } from './file.mjs';
 
-import { newParameters, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
+import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
     bodylessResponse, bodyResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
-let OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
-let allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
+const OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
+const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
+
+const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*');
 
 let routes = {
     account: {
@@ -170,12 +172,18 @@ async function category_cover(method, session, parameters, request, response) {
             case 'POST':
                 const data = await getRequestBody(request);
                 if (data === null) { bodylessResponse(badRequest, response); return; }
+                const cover_data = data.rawData['cover'];
+                if (cover_data === undefined || cover_data === null || !accept_image.isAccepted(newMimeType(cover_data['mime_type']))) { 
+                    bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('cover')); return;
+                }
                 const new_cover_url = await processCategoryCover(data.getFileName('cover'));
-                if (new_cover_url === null) { bodylessResponse(badRequest, response); }
+                if (new_cover_url === null) { bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('cover')); return; }
                 else {
                     await connection.setCategoryCoverURL(category_id, new_cover_url);
                     bodylessResponse(OK, response);
                 }
+                // We delete the temporary file regardless of the outcome.
+                await deleteTempFile(data.getFileName('cover'));
                 break;
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...

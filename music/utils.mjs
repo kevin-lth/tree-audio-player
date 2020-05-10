@@ -14,9 +14,9 @@ export function newURL(url) {
     for (let i = 1; i < paths.length - 1; i++) {
         if (paths[i].match(alphanumeric) === null) { return null; } // All intermediate text between slashes must be alphanumeric and lower-case
     }
-    let endPath = paths[paths.length - 1].split('?');
+    const endPath = paths[paths.length - 1].split('?');
     if (endPath.length > 2) { return null; } // We can only have one ? to specify the parameters
-    let file = endPath[0].split('.');
+    const file = endPath[0].split('.');
     if (file.length > 2) { return null; } // The file may or may not have an extension. It may even be the empty string
     for (let i = 1; i < file.length - 1; i++) {
         if (file[i].match(alphanumeric) === null) { return null; }
@@ -39,32 +39,36 @@ export function newURL(url) {
 }
 
 export function newParameters(urlencoded_parameters) {
-    let parameters = {};
-    let endPathParameters = urlencoded_parameters.split('&');
+    const endPathParameters = urlencoded_parameters.split('&'), parameters = {};
     for (let i = 0; i < endPathParameters.length; i++) {
-        let data = endPathParameters[i].split('=');
+        const data = endPathParameters[i].split('=');
         if (data.length !== 2 || data[0].match(alphanumericAndNonWebCharacters) === null || data[1].match(alphanumericAndNonWebCharacters) === null) { return null; }
         parameters[data[0]] = data[1]; // It is important that parameters remain case sensitive ! (e.g. passwords)
     }
     return parameters;
 }
 
+export function newMimeType(mime_type) {
+    const acceptedContent = mime_type.split('/');
+    if (acceptedContent.length !== 2) { return null; }
+    else { return { mimeType: acceptedContent[0], mimeSubtype: acceptedContent[1] }; }
+}
+
 export function newAcceptHeader(accept) {
     if (accept === undefined || accept === null || accept === '' || accept.length > acceptMaxLength) { return null; }
-    let array = accept.split(',');
-    let acceptedContentArray = [];
+    const array = accept.split(','), acceptedContentArray = [];
     for (let i = 0; i < array.length; i++) {
-        let acceptValue = array[i].split(';');
+        const acceptValue = array[i].split(';');
         if (acceptValue.length === 0) { return null; }
         // We ignore the order of the client for now... We focus on checking it accepts the content we want to send
-        let acceptedContent = acceptValue[0].split('/');
-        if (acceptedContent.length !== 2) { return null; }
-        acceptedContentArray.push({ mimeType: acceptedContent[0], mimeSubtype: acceptedContent[1] });
+        const acceptedContent = newMimeType(acceptValue[0]);
+        if (acceptedContent === null) { return null; }
+        acceptedContentArray.push(acceptedContent);
     }
     
     function isAccepted(contentType) {
         for (let i = 0; i < acceptedContentArray.length; i++) {
-            let mimeType = acceptedContentArray[i].mimeType, mimeSubtype = acceptedContentArray[i].mimeSubtype;
+            const mimeType = acceptedContentArray[i].mimeType, mimeSubtype = acceptedContentArray[i].mimeSubtype;
             if ((mimeType === contentType.mimeType || mimeType === '*') && (mimeSubtype === contentType.mimeSubtype || mimeSubtype === '*')) {
                 return true;
             }
@@ -77,7 +81,7 @@ export function newAcceptHeader(accept) {
 
 export function newAuthorizationHeader(authorization) {
     if (authorization === undefined || authorization === null || authorization === '' || authorization.length > authorizationMaxLength) { return null; }
-    let array = authorization.split(' ');
+    const array = authorization.split(' ');
     if (array.length !== 2 || validAuthorizationMethod.indexOf(array[0]) === -1 || array[1].match(alphanumeric)) { return null; }
     
     return { type: array[0], token: array[1] };
@@ -85,8 +89,7 @@ export function newAuthorizationHeader(authorization) {
 
 export function newCookieHeader(cookie) {
     if (cookie === undefined || cookie === null || cookie === '' || cookie.length > cookieMaxLength) { return null; }
-    let array = cookie.split(';');
-    let cookies = {};
+    const array = cookie.split(';'), cookies = {};
     for (let i = 0; i < array.length; i++) {
         let cookieValue = array[i].split('=');
         if (cookieValue.length !== 2) { return null; }
@@ -131,30 +134,32 @@ const temp_dir = './temp/';
 async function __promise__getRequestBody(request) {
     return new Promise((resolve, reject) => {
         try {
-            let busboy = new Busboy({ headers: request.headers, limits: { fields: 100, files: 2, fileSize: 10e6 } });
+            const busboy = new Busboy({ headers: request.headers, limits: { fields: 100, files: 2, fileSize: 10e6 } });
+            const data = { rawData: {} };
             
             function getFieldValue(field) {
-                if (data.rawData['type'] !== 'field') { return null; }
-                else { return data['value']; }
+                if (data['rawData'][field]['type'] !== 'field') { return null; }
+                else { return data['rawData'][field]['value']; }
             }
 
             function getFileName(file) {
-                if (data.rawData['type'] !== 'file') { return null; }
-                else { return data['value']; }
+                if (data['rawData'][file]['type'] !== 'file') { return null; }
+                else { return data['rawData'][file]['value']; }
             }
             
-            let data = { rawData: {}, getFieldValue, getFileName };
-            let stream_promises = [];
-            busboy.on('field', (fieldname, value, fieldname_truncated, val_truncated, encoding, mimetype) => {
-                data.rawData[fieldname] = { type: 'field', value, encoding, mimetype };
+            data['getFieldValue'] = getFieldValue;
+            data['getFileName'] = getFileName;
+            const stream_promises = [];
+            busboy.on('field', (fieldname, value, fieldname_truncated, val_truncated, encoding, mime_type) => {
+                data.rawData[fieldname] = { type: 'field', value, encoding, mime_type };
             });
-            busboy.on('file', (fieldname, stream, filename, encoding, mimetype) => {
+            busboy.on('file', (fieldname, stream, filename, encoding, mime_type) => {
                 const temp_name = crypto.randomBytes(32).toString('hex').slice(0, 32);
                 // We will save the file in a temporary directory. We ignore the filename for security reasons.
                 // We use piping to directly save the file instead of keeping it into memory
                 let file = fs.createWriteStream(temp_dir + temp_name);
                 stream.pipe(file);
-                data.rawData[fieldname] = { type: 'file', value: temp_name, encoding, mimetype };
+                data.rawData[fieldname] = { type: 'file', value: temp_name, encoding, mime_type };
                 
                 let stream_promise = new Promise((resolve, reject) => { stream.on('close', () => { resolve(); }); });
                 
