@@ -45,7 +45,10 @@ export async function handle(url, request, response) {
     
     // We check to see if the client accepts a JSON and set every response to be a JSON
     // There is one exception to this content-type, however it will be dealt in the function responsible for this type of request
-    if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) { bodylessResponse(notAcceptable, response); return; }
+    if (!(acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' }) 
+        && acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: '*' })
+        && acceptTypes.isAccepted({ mimeType: 'audio', mimeSubtype: '*' }) )) { bodylessResponse(notAcceptable, response); return; }
+    // Except for 2 specific requests, we will send JSON in the body
     response.setHeader('Content-Type', 'application/json');
 
     let currentRoutes = routes;
@@ -177,7 +180,6 @@ async function category_cover(method, session, parameters, request, response) {
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
         }
-        bodyResponse(OK, '{}', response);
     } else { bodylessResponse(unauthorized, response); }
 }
 

@@ -112,6 +112,7 @@ export function bodylessResponse(status_code, response) {
 }
 
 export function bodyResponse(status_code, body, response) {
+    response.setHeader('Content-Length', Buffer.byteLength(body));
     response.statusCode = status_code;
     response.write(body);
     response.end();
@@ -129,7 +130,7 @@ function __promise__getRequestBody(request) {
         let size = 0;
         request.on('data', chunk => { 
             chunks.push(chunk);
-            size += chunk.length;
+            size += Buffer.byteLength(chunk);
             if (size >= maxPayloadSize) {
                 // We destroy the connection : it might be someone trying to overflow the server's memory to attack it
                 request.connection.destroy();
@@ -160,7 +161,7 @@ export async function getRequestBody(request) {
 
 // Parses the body if it is URL-Encoded or a JSON object.
 export async function parseRequestBody(request) {
-    const data = await getRequestBody(request);
+    const data = await getRequestBody(request)[0];
     try {
         if (data === null) { throw new Error('An error occured when fetching the request\'s body.'); }
         const body = data.toString(), type = request.headers['content-type'];
