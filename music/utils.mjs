@@ -1,5 +1,5 @@
 const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonWebCharacters = /^[\w|\h|\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;;
-const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000;
+const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, rangeMaxLength = 50;
 const validAuthorizationMethod = ['Bearer'];
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
@@ -98,6 +98,34 @@ export function newCookieHeader(cookie) {
     return cookies;
 }
 
+// This is a voluntary deviation from the standards of the W3C : We will not support multiple ranges request for now
+export function newRangeHeader(range_header) {
+    if (range_header === undefined || range_header === null || range_header === '' || range_header.length > rangeMaxLength) { return null; }
+    const array = range_header.split('=');
+    if (array.length !== 2 || array[0] !== 'bytes') { return null; }
+    const ranges = array[1].split(',');
+    if (ranges.length !== 1) { return null; } // Deviation from standards here
+    const range = ranges[0].split('-');
+    if (range.length !== 2) { return null; }
+    const start_range = range[0].trim(), end_range = range[1].trim();
+    let start, end, reversed = false;
+    if (start_range === '') {
+        end = newInt(end_range);
+        if (end === null) { return null; }
+        start = 0, end = end-1;
+        reversed = true;
+    } else if (end_range === '') {
+        start = newInt(start_range);
+        end = -1;
+    } else {
+        start = newInt(start_range);
+        end = newInt(end_range);
+    }
+    if (start === null || end === null) { return null; }
+    if (start < 0 || (start >= end && end !== -1)) { return null; }
+    return { start, end, reversed };
+}
+
 export function newInt(number) {
     if (number === undefined || number === null || number === '' || isNaN(number)) { return null; }
     else { return parseInt(number); }
@@ -120,6 +148,7 @@ export function bodylessWithContentLengthResponse(status_code, body, response) {
     response.end();
 }
 
+// Do not use with large amount of content, for instance opened files, as it is not adapted for them.
 export function bodyResponse(status_code, body, response) {
     response.setHeader('Content-Length', Buffer.byteLength(body));
     response.statusCode = status_code;
@@ -127,22 +156,33 @@ export function bodyResponse(status_code, body, response) {
     response.end();
 }
 
-export function bodylessStreamResponse(status_code, content_length, response) {
-    response.setHeader('Content-Length', content_length);
+export function bodylessStreamResponse(status_code, body, response) {
+    response.setHeader('Accept-Ranges', 'bytes');
+    if (body.partial) {
+        response.setHeader('Content-Range', `bytes ${body.start}-${body.end}/${body.total_size}`);
+        response.setHeader('Content-Length', body.range_size);
+    } else { response.setHeader('Content-Length', body.total_size); }
     response.statusCode = status_code;
     response.end();
 }
 
-export function bodyStreamResponse(status_code, stream, content_length, response) {
-    response.setHeader('Content-Length', content_length);
+export function bodyStreamResponse(status_code, body, request, response) {
+    response.setHeader('Accept-Ranges', 'bytes');
+    if (body.partial) {
+        response.setHeader('Content-Range', `bytes ${body.start}-${body.end}/${body.total_size}`);
+        response.setHeader('Content-Length', body.range_size);
+    } else { response.setHeader('Content-Length', body.total_size); }
     response.statusCode = status_code;
-    stream.on('open', () => {
-        stream.pipe(response);
+    request.on('abort', () => {
+        body.stream.destroy(); // To avoid the case where the server tries to send massive amount of unnecessary data, we abort the stream. (For instance, if someones requests 50 streams of music because he skipped ahead in his playlist)
     });
-    stream.on('error', (error) => {
+    body.stream.on('open', () => {
+        body.stream.pipe(response);
+    });
+    body.stream.on('error', (error) => {
         response.end();
     });
-    stream.on('close', () => {
+    body.stream.on('close', () => {
         response.end();
     });
 }

@@ -1,11 +1,11 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCover, getDefaultCategoryCover, processCategoryCover, deleteTempFile } from './file.mjs';
+import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, deleteTempFile } from './file.mjs';
 
-import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
+import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader, newInt, newBoolean, 
     bodylessResponse, bodylessWithContentLengthResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
-const OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
+const OK = 200, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
 const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*');
@@ -160,14 +160,17 @@ async function category_cover(method, session, parameters, request, response) {
         switch (method) {
             case 'HEAD': case 'GET':
                 const cover_url = await connection.getCategoryCoverURL(category_id);
-                let cover;
+                let cover, range = newRangeHeader(request.headers['range']);
                 // If it is null, we just send the default cover right away. Otherwise, we try to fetch the corresponding file with the cover URL obtained
-                if (cover_url === null) { cover = await getDefaultCategoryCover(); }
-                else { cover = await getCategoryCover(cover_url); }
+                if (cover_url === null) { cover = await getDefaultCategoryCoverStream(range); }
+                else { cover = await getCategoryCoverStream(cover_url, range); }
+                let status_code;
+                if (cover.partial) { status_code = partialContent; }
+                else { status_code = OK; }
                 // We have to change the content-type : we are not sending JSON !
                 response.setHeader('Content-Type', 'image/png');
-                if (method === 'GET') { bodyStreamResponse(OK, cover.stream, cover.file_size, response); }
-                else { bodylessStreamResponse(OK, cover.file_size, response); }
+                if (method === 'GET') { bodyStreamResponse(status_code, cover, request, response); }
+                else { bodylessStreamResponse(status_code, cover, response); }
                 break;
             case 'POST':
                 const data = await getRequestBody(request);
