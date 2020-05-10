@@ -2,7 +2,7 @@ import { newConnection } from './database.mjs';
 import { getCategoryCover, getDefaultCategoryCover, processCategoryCover, deleteTempFile } from './file.mjs';
 
 import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
-    bodylessResponse, bodylessWithContentLengthResponse, bodyResponse, getRequestBody } from './../utils.mjs'
+    bodylessResponse, bodylessWithContentLengthResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
 const OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
@@ -166,8 +166,8 @@ async function category_cover(method, session, parameters, request, response) {
                 else { cover = await getCategoryCover(cover_url); }
                 // We have to change the content-type : we are not sending JSON !
                 response.setHeader('Content-Type', 'image/png');
-                if (method === 'GET') { bodyResponse(OK, cover, response); }
-                else { bodylessWithContentLengthResponse(OK, cover, response); }
+                if (method === 'GET') { bodyStreamResponse(OK, cover.stream, cover.file_size, response); }
+                else { bodylessStreamResponse(OK, cover.file_size, response); }
                 break;
             case 'POST':
                 const data = await getRequestBody(request);

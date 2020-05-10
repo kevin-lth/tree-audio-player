@@ -127,6 +127,26 @@ export function bodyResponse(status_code, body, response) {
     response.end();
 }
 
+export function bodylessStreamResponse(status_code, content_length, response) {
+    response.setHeader('Content-Length', content_length);
+    response.statusCode = status_code;
+    response.end();
+}
+
+export function bodyStreamResponse(status_code, stream, content_length, response) {
+    response.setHeader('Content-Length', content_length);
+    response.statusCode = status_code;
+    stream.on('open', () => {
+        stream.pipe(response);
+    });
+    stream.on('error', (error) => {
+        response.end();
+    });
+    stream.on('close', () => {
+        response.end();
+    });
+}
+
 //
 // Request body
 //
