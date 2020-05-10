@@ -2,7 +2,7 @@ import { newConnection } from './database.mjs';
 import { getCategoryCover, getDefaultCategoryCover, processCategoryCover, deleteTempFile } from './file.mjs';
 
 import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newInt, newBoolean, 
-    bodylessResponse, bodyResponse, getRequestBody } from './../utils.mjs'
+    bodylessResponse, bodylessWithContentLengthResponse, bodyResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
 
 const OK = 200, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
@@ -88,15 +88,14 @@ async function getSession(request) {
 async function account_status(method, session, parameters, request, response) {
     const validMethods = ['HEAD', 'GET'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (method === 'HEAD') { bodylessResponse(OK, response); }
     else { 
         let body = "{ username: null }"; // Unnecessary to stringify each time to same object
         if (session !== null) {
             let account = await connection.getAccount(session.account_id);
             if (account !== null) { body = JSON.stringify({ username: account.username }); }
         }
-        bodyResponse(OK, body, response);
+        if (method === 'GET') { bodyResponse(OK, body, response); }
+        else { bodylessWithContentLengthResponse(OK, body, response); }
     }
 }
 
@@ -167,7 +166,8 @@ async function category_cover(method, session, parameters, request, response) {
                 else { cover = await getCategoryCover(cover_url); }
                 // We have to change the content-type : we are not sending JSON !
                 response.setHeader('Content-Type', 'image/png');
-                bodyResponse(OK, cover, response);
+                if (method === 'GET') { bodyResponse(OK, cover, response); }
+                else { bodylessWithContentLengthResponse(OK, cover, response); }
                 break;
             case 'POST':
                 const data = await getRequestBody(request);
@@ -216,8 +216,9 @@ async function category_resource(method, session, parameters, request, response)
                 let status_code;
                 if (category === null) { status_code = badRequest; }
                 else { status_code = OK; }
-                if (method === 'HEAD' || status_code !== OK) { bodylessResponse(status_code, response); }
-                else { bodyResponse(status_code, JSON.stringify(category), response) } // Has to be GET
+                if (status_code !== OK) { bodylessResponse(status_code, response); return; }
+                if (method === 'GET') { bodyResponse(status_code, JSON.stringify(category), response); }
+                else { bodylessWithContentLengthResponse(status_code, JSON.stringify(category), response) } // Has to be GET
                 break;
             case 'PUT':
                 if (category_id === null) { bodylessResponse(badRequest, response); return; }
@@ -274,7 +275,7 @@ async function category_public(method, session, parameters, request, response) {
         if (categories === null) { bodylessResponse(internalServerError, response); return; }
         else {
             if (method === 'GET') { bodyResponse(OK, JSON.stringify(categories), response); return; }
-            else { bodylessResponse(OK, response); return; }
+            else { bodylessWithContentLengthResponse(OK, JSON.stringify(categories), response); return; }
         }
     } else { bodylessResponse(unauthorized, response); }
 }
@@ -291,7 +292,7 @@ async function category_personal(method, session, parameters, request, response)
                 if (categories === null) { bodylessResponse(internalServerError, response); return; }
                 else {
                     if (method === 'GET') { bodyResponse(OK, JSON.stringify(categories), response); return; }
-                    else { bodylessResponse(OK, response); return; }
+                    else { bodylessWithContentLengthResponse(OK, JSON.stringify(categories), response); return; }
                 }
                 break;
             case 'POST':

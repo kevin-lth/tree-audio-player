@@ -114,6 +114,12 @@ export function bodylessResponse(status_code, response) {
     response.end();
 }
 
+export function bodylessWithContentLengthResponse(status_code, body, response) {
+    response.setHeader('Content-Length', Buffer.byteLength(body));
+    response.statusCode = status_code;
+    response.end();
+}
+
 export function bodyResponse(status_code, body, response) {
     response.setHeader('Content-Length', Buffer.byteLength(body));
     response.statusCode = status_code;
