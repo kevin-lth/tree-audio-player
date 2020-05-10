@@ -138,11 +138,11 @@ export async function newConnection() {
                 getAllPersonalCategories: await db.prepare(
                     `SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE creator_id=$account_id 
                         OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id);`),
-                updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id = $category_id;'),
+                updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id=$category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
-                setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id = $category_id;'),
-                getCategoryCoverURL: await db.prepare('SELECT cover_url FROM category WHERE category_id = $category_id;'),
-                deleteCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=NULL WHERE category_id = $category_id;'),
+                setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id=$category_id;'),
+                getCategoryCoverURL: await db.prepare('SELECT cover_url FROM category WHERE category_id=$category_id;'),
+                deleteCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=NULL WHERE category_id=$category_id;'),
                 rebuildCategoryLinkTreeAfterCreation: await db.prepare(
                     `INSERT INTO category_links (parent_category_id, child_category_id, depth) 
                         SELECT top_links.parent_category_id, bottom_links.child_category_id, top_links.depth+1+bottom_links.depth
@@ -254,7 +254,7 @@ export async function newConnection() {
         
         async function createSession(account_id) {
             try {
-                const token = crypto.randomBytes(32).toString('hex').slice(0, 64);
+                const token = crypto.randomBytes(32).toString('hex');
                 await statements.createSession.run({ $account_id: account_id, $token: token });
                 return token;
             } catch (error) {
@@ -371,9 +371,9 @@ export async function newConnection() {
         
         async function getCategoryCoverURL(category_id) {
             try {
-                const cover_url = await statements.getCategoryCoverURL.get({ $category_id: category_id, $cover_url: cover_url });
-                if (cover_url === undefined) { return null; }
-                else { return cover_url; }
+                const result = await statements.getCategoryCoverURL.get({ $category_id: category_id });
+                if (result === undefined) { return null; }
+                else { return result['cover_url']; }
             } catch (error) {
                 console.log(`[Database] getCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
                 return null;

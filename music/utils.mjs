@@ -154,16 +154,15 @@ async function __promise__getRequestBody(request) {
                 data.rawData[fieldname] = { type: 'field', value, encoding, mime_type };
             });
             busboy.on('file', (fieldname, stream, filename, encoding, mime_type) => {
-                const temp_name = crypto.randomBytes(32).toString('hex').slice(0, 32);
+                const temp_name = crypto.randomBytes(16).toString('hex');
                 // We will save the file in a temporary directory. We ignore the filename for security reasons.
-                // We use piping to directly save the file instead of keeping it into memory
                 let file = fs.createWriteStream(temp_dir + temp_name);
                 stream.pipe(file);
                 data.rawData[fieldname] = { type: 'file', value: temp_name, encoding, mime_type };
                 
                 let stream_promise = new Promise((resolve, reject) => { stream.on('close', () => { resolve(); }); });
                 
-                stream_promises.push(stream_promise); // We store the streams to make sure to not end the promise before the files are saved on the disk
+                stream_promises.push(stream_promise); // We store the streams to make sure to not end the promise before the files are saved on the disk. Otherwise, we might try to access the files when they are not finished writing.
             });
             busboy.on('finish', () => {
                 Promise.all(stream_promises).then(() => { resolve(data); });

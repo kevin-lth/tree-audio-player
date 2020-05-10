@@ -6,3 +6,5 @@ database.sqlite
 database.sqlite-journal
 svg/favicon.svg
 svg/favicon.png
+media/music/covers/*
+media/music/files/*
