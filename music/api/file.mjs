@@ -43,8 +43,9 @@ async function __getStream(path, mime_type, range = null) {
 
 function __promise_ffmpeg(file_name, format, new_file_name) {
     return new Promise((resolve, reject) => {
+        const silenceremove = 'silenceremove=start_periods=1:start_silence=0.2:stop_periods=0:start_threshold=-60dB';
         ffmpeg(__getTempURL(file_name)).noVideo().audioCodec(format.codec).audioBitrate(format.bitrate)
-            .audioFilters(['loudnorm', 'silenceremove=1:0:-50dB', 'areverse,silenceremove=1:0:-50dB,areverse']) // Since silenceremove only trims at the beginning, we need to reverse, trim the "beginning" and then reverse again.
+            .audioFilters(['loudnorm', silenceremove, `areverse,${silenceremove},areverse`]) // Since silenceremove only trims at the beginning, we need to reverse, trim the "beginning" and then reverse again.
             .on('error', (error) => { reject(error); })
             .on('end', () => { resolve(); })
             .save(__getMusicURL(new_file_name, format));
