@@ -76,10 +76,10 @@ export async function newConnection() {
                 );`),
             createMusicURlTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS music_urls (
-                    music_url_id INTEGER PRIMARY KEY,
                     music_id INTEGER NOT NULL,
                     format TEXT NOT NULL,
                     url TEXT NOT NULL,
+                    PRIMARY KEY (music_id, format),
                     FOREIGN KEY (music_id) REFERENCES music (music_id) ON DELETE CASCADE
                 );`),
         };
@@ -185,6 +185,9 @@ export async function newConnection() {
                     `SELECT tag.tag_id, tag.tag_name FROM tag INNER JOIN music_tags ON tag.tag_id=music_tags.tag_id WHERE music_tags.music_id=$music_id;`),
                 hasMusicTag: await db.prepare('SELECT COUNT(1) as checkCount FROM music_tags WHERE music_id=$music_id AND tag_id=$tag_id;'),
                 removeAllMusicTags: await db.prepare('DELETE FROM music_tags WHERE music_id=$music_id;'),
+                addMusicURL: await db.prepare('INSERT INTO music_urls (music_id, format, url) VALUES ($music_id, $format, $url);'),
+                getMusicURLs: await db.prepare('SELECT music_id, format, url FROM music_urls WHERE music_id=$music_id;'),
+                deleteMusicURL: await db.prepare('DELETE FROM music_urls WHERE music_id=$music_id AND format=$format;'),
             };
         }
         await initDatabase();
@@ -667,20 +670,42 @@ export async function newConnection() {
                 return false;
             }
         }
-        
-        async function addMusicFormatAndURL(music_id, format, music_url) {
-        
+        async function addMusicFormatAndURL(music_id, format, url) {
+            try {
+                await statements.addMusicURL.run({ $music_id: music_id, $format: format, $url: url });
+                return true;
+            } catch (error) {
+                console.log(`[Database] addMusicFormatAndURL failed ! music_id = ${music_id}, format = ${format}, url = ${url}, error = ${error}`);
+                return false;
+            }
         }
         
         async function getMusicFormatsAndURLs(music_id) {
-        
+            try {
+                const result = await statements.getMusicURLs.all({ $music_id: music_id });
+                if (result === undefined) { return null; }
+                const dict = {};
+                for (let i = 0; i < result.length; i++) {
+                    dict[result[i]['format']] = result[i]['url'];
+                }
+                return dict;
+            } catch (error) {
+                console.log(`[Database] getMusicFormatsAndURLs failed ! music_id = ${music_id}, error = ${error}`);
+                return null;
+            }
         }
         
         async function removeMusicFormat(music_id, format) {
-        
+            try {
+                await statements.deleteMusicURL.run({ $music_id: music_id, $format: format });
+                return true;
+            } catch (error) {
+                console.log(`[Database] removeMusicFormat failed ! music_id = ${music_id}, format = ${format}, error = ${error}`);
+                return false;
+            }
         }
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic };
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic, addMusicFormatAndURL, getMusicFormatsAndURLs, removeMusicFormat };
     } catch (error) {
         console.log(`[Database] Error when trying to initialize ! error = ${error}`);
         return { available: false};

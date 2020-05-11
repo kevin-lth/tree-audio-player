@@ -1,13 +1,23 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import easyimage from 'easyimage';
+import ffmpeg from 'fluent-ffmpeg';
 
 const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = './temp/';
 
+// You might need to change your values for your own installation
+const audio_formats = {
+    'mp3-128': { internal_name: 'mp3-128', mime_type: "audio/mpeg", codec: 'libmp3lame', bitrate: 128, extension: 'mp3' },
+    'ogg|opus-96': { internal_name: 'ogg|opus-96', mime_type: "audio/ogg", codec: 'libopus', bitrate: 96, extension: 'ogg' },
+};
+
+export function getAudioFormats() { return audio_formats; }
+
 function __getCoverURL(cover_url) { return cover_dir + `${cover_url}.png`; }
+function __getMusicURL(music_url, format) { return music_dir + `${music_url}.${format.extension}`; }
 function __getTempURL(temp_url) { return temp_dir + temp_url; }
 
-async function __getStream(path, range = null) {
+async function __getStream(path, mime_type, range = null) {
     try {
         const stats = await fs.promises.stat(path);
         if (stats !== null) {
@@ -19,30 +29,40 @@ async function __getStream(path, range = null) {
                 else { stream_start = range.start, stream_end = Math.min(range.end, total_size); }
                 return {
                     stream: fs.createReadStream(path, { start: stream_start, end: stream_end}), partial, total_size, 
-                    range_size: stream_end-stream_start+1, start: stream_start, end: stream_end
+                    range_size: stream_end-stream_start+1, start: stream_start, end: stream_end, mime_type
                };
-            } else { return { stream: fs.createReadStream(path), partial, total_size }; }
-            let start_stream, end_stream, range_size;
+            } else { return { stream: fs.createReadStream(path), partial, total_size, mime_type }; }
         }
         else { return null; }
     } catch (error) {
-        console.log(`[File] getFileLength failed ! path = ${path}, error = ${error}.`);
+        console.log(`[File] __getStream failed ! path = ${path}, error = ${error}.`);
         return null;
     }
 }
 
+
+function __promise_ffmpeg(file_name, format, new_file_name) {
+    return new Promise((resolve, reject) => {
+        ffmpeg(__getTempURL(file_name)).noVideo().audioCodec(format.codec).audioBitrate(format.bitrate)
+            .audioFilters(['loudnorm', 'silenceremove=1:0:-50dB', 'areverse,silenceremove=1:0:-50dB,areverse']) // Since silenceremove only trims at the beginning, we need to reverse, trim the "beginning" and then reverse again.
+            .on('error', (error) => { reject(error); })
+            .on('end', () => { resolve(); })
+            .save(__getMusicURL(new_file_name, format));
+    });
+}
+
 export async function getCategoryCoverStream(cover_url, range) {
     try {
-        return await __getStream(__getCoverURL(cover_url), range);
+        return await __getStream(__getCoverURL(cover_url), 'image/png', range);
     } catch (error) {
-        console.log(`[File] getCategoryCover failed ! cover_url = ${cover_url}, error = ${error}. Attempting to load default cover...`);
-        return getDefaultCategoryCover();
+        console.log(`[File] getCategoryCover failed ! cover_url = ${cover_url}, error = ${error}.`);
+        return null;
     }
 }
 
 export async function getDefaultCategoryCoverStream(range) {
     try {
-        return await __getStream('./media/music/default_cover.png', range);
+        return await __getStream('./media/music/default_cover.png', 'image/png', range);
     } catch (error) {
         console.log(`[File] getDefaultCategoryCover failed ! error = ${error}. Please check that there is a default cover in your media folder.`);
         return null;
@@ -62,7 +82,36 @@ export async function processCategoryCover(file_name) {
         });
         return cover_url;
     } catch (error) {
-        console.log(`[File] processCategoryCover failed ! error = ${error}. Ignoring file sent by client.`);
+        console.log(`[File] processCategoryCover failed ! file_name = ${file_name}, error = ${error}. Ignoring file sent by client.`);
+        return null;
+    }
+}
+
+export async function getMusicFile(file_url, range, format) {
+    if (audio_formats[format] === undefined) { return null; }
+    try {
+        const format_info = audio_formats[format];
+        return await __getStream(__getMusicURL(file_url, format_info), format_info.mime_type, range);
+    } catch (error) {
+        console.log(`[File] getMusicFile failed ! file_url = ${file_url}, format = ${format}, error = ${error}.`);
+        return null;
+    }
+}
+
+export async function processMusicFile(file_name) {
+    try {
+        // FFMPEG will crash if anything goes wrong (for instance, if it isn't a music file..)
+        const formats = Object.keys(audio_formats), result = {};
+        for (let i = 0; i < formats.length; i++) {
+            const format = formats[i];
+            const format_data = audio_formats[format];
+            const new_file_name = crypto.randomBytes(16).toString('hex');
+            await __promise_ffmpeg(file_name, format_data, new_file_name);
+            result[format] = new_file_name;
+        }
+        return result;
+    } catch (error) {
+        console.log(`[File] processMusicFile failed ! file_name = ${file_name}, error = ${error}. Ignoring file sent by client.`);
         return null;
     }
 }

@@ -3,7 +3,7 @@
     "bcrypt": "^4.0.1",
     "busboy": "^0.3.1",
     "easyimage": "^3.1.1",
-    "ffmpeg": "0.0.4",
+    "fluent-ffmpeg": "^2.1.2",
     "sqlite": "^3.0.6"
   }
 }

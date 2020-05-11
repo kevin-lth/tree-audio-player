@@ -162,6 +162,7 @@ export function bodylessStreamResponse(status_code, body, response) {
         response.setHeader('Content-Range', `bytes ${body.start}-${body.end}/${body.total_size}`);
         response.setHeader('Content-Length', body.range_size);
     } else { response.setHeader('Content-Length', body.total_size); }
+    response.setHeader('Content-Type', body.mime_type);
     response.statusCode = status_code;
     response.end();
 }
@@ -172,6 +173,7 @@ export function bodyStreamResponse(status_code, body, request, response) {
         response.setHeader('Content-Range', `bytes ${body.start}-${body.end}/${body.total_size}`);
         response.setHeader('Content-Length', body.range_size);
     } else { response.setHeader('Content-Length', body.total_size); }
+    response.setHeader('Content-Type', body.mime_type);
     response.statusCode = status_code;
     request.on('abort', () => {
         body.stream.destroy(); // To avoid the case where the server tries to send massive amount of unnecessary data, we abort the stream. (For instance, if someones requests 50 streams of music because he skipped ahead in his playlist)

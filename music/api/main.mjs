@@ -1,14 +1,16 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, deleteTempFile } from './file.mjs';
+import { getAudioFormats, getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile, deleteTempFile } from './file.mjs';
 
 import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader, newInt, newBoolean, 
     bodylessResponse, bodylessWithContentLengthResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newCategory, newIDlessMusic, newMusic } from '../common/models.mjs';
 
-const OK = 200, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
+const OK = 200, accepted = 202, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
-const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*');
+const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*,application/octet-stream');
+
+const default_audio_format = 'ogg|opus-96';
 
 let routes = {
     account: {
@@ -161,15 +163,16 @@ async function category_cover(method, session, parameters, request, response) {
         switch (method) {
             case 'HEAD': case 'GET':
                 const cover_url = await connection.getCategoryCoverURL(category_id);
-                let cover, range = newRangeHeader(request.headers['range']);
+                const range = newRangeHeader(request.headers['range']);
+                let cover;
                 // If it is null, we just send the default cover right away. Otherwise, we try to fetch the corresponding file with the cover URL obtained
                 if (cover_url === null) { cover = await getDefaultCategoryCoverStream(range); }
                 else { cover = await getCategoryCoverStream(cover_url, range); }
+                if (cover === null) { bodylessResponse(notFound, response); return; }
                 let status_code;
                 if (cover.partial) { status_code = partialContent; }
                 else { status_code = OK; }
-                // We have to change the content-type : we are not sending JSON !
-                response.setHeader('Content-Type', 'image/png');
+                
                 if (method === 'GET') { bodyStreamResponse(status_code, cover, request, response); }
                 else { bodylessStreamResponse(status_code, cover, response); }
                 break;
@@ -182,10 +185,8 @@ async function category_cover(method, session, parameters, request, response) {
                 }
                 const new_cover_url = await processCategoryCover(data.getFileName('cover'));
                 if (new_cover_url === null) { bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('cover')); return; }
-                else {
-                    await connection.setCategoryCoverURL(category_id, new_cover_url);
-                    bodylessResponse(OK, response);
-                }
+                await connection.setCategoryCoverURL(category_id, new_cover_url);
+                bodylessResponse(OK, response);
                 // We delete the temporary file regardless of the outcome.
                 await deleteTempFile(data.getFileName('cover'));
                 break;
@@ -339,8 +340,50 @@ async function music_file(method, session, parameters, request, response) {
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
-        // TODO
-        bodyResponse(OK, '{}', response);
+        const music_id = newInt(parameters['id']);
+        if (music_id === null) { bodylessResponse(badRequest, response); return; }
+        switch (method) {
+            case 'HEAD': case 'GET':
+                let format = parameters['format'];
+                if (format === undefined) { format = default_audio_format; }
+                const range = newRangeHeader(request.headers['range']);
+                const formats_and_urls = await connection.getMusicFormatsAndURLs(music_id);
+                if (formats_and_urls === null) { bodylessResponse(notFound, response); return; }
+                const url = formats_and_urls[format];
+                if (url === undefined || url === null) { bodylessResponse(notFound, response); return; }
+                const file = await getMusicFile(url, range, format);
+                
+                if (file === null) { bodylessResponse(notFound, response); return; }
+                let status_code;
+                if (file.partial) { status_code = partialContent; }
+                else { status_code = OK; }
+                if (method === 'GET') { bodyStreamResponse(status_code, file, request, response); }
+                else { bodylessStreamResponse(status_code, file, response); }
+                break;
+            case 'POST':
+                const data = await getRequestBody(request);
+                if (data === null) { bodylessResponse(badRequest, response); return; }
+                const file_data = data.rawData['file'];
+                if (file_data === undefined || file_data === null || !accept_audio.isAccepted(newMimeType(file_data['mime_type']))) { 
+                    bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('file')); return;
+                }
+                // The processing takes a while... we will answer the client immediately.
+                bodylessResponse(accepted, response);
+                
+                const result = await processMusicFile(data.getFileName('file'));
+                if (result === null) { return; } // No response necessary
+                
+                const keys = Object.keys(result);
+                for (let i = 0; i < keys.length; i++) {
+                    await connection.removeMusicFormat(music_id, keys[i]);
+                    await connection.addMusicFormatAndURL(music_id, keys[i], result[keys[i]]);
+                }
+                // We delete the temporary file regardless of the outcome.
+                await deleteTempFile(data.getFileName('file'));
+                break;
+            default:
+                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
+        }
     } else { bodylessResponse(unauthorized, response); }
 }
 
