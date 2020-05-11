@@ -2,7 +2,7 @@ import sqlite from 'sqlite';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
-import { newCategory } from '../common/models.mjs';
+import { newCategory, newMusic } from '../common/models.mjs';
  
 export async function newConnection() {
     try {
@@ -582,7 +582,7 @@ export async function newConnection() {
                 const musics = [];
                 for (let i = 0; i < result.length; i++) {
                     const music = result[i];
-                    const tags = __getMusicTags(music['music_id']);
+                    const tags = await __getMusicTags(music['music_id']);
                     musics.push(__getMusicObjectFromResult(music, tags));
                 }
                 return musics;
@@ -618,7 +618,7 @@ export async function newConnection() {
             const result = await statements.getTagsFromMusic.all({ $music_id: music_id }), tags = [];
             if (result === undefined) { return []; }
             for (let i = 0; i < result.length; i++) {
-                tags.push(result[i].tag_name);
+                tags.push(result[i]['tag_name']);
             }
             return tags;
         }

@@ -1,6 +1,6 @@
 import { newInt, newBoolean } from '../utils.mjs';
 
-const alphanumeric = /^\w+$/, alphanumericAndNonWebCharacters = /^[\w|\h|\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;
+const alphanumeric = /^\w+$/, alphanumericAndNonWebCharacters = /^[\w| |\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;
 
 export function newAccount(username, password) {
     if ((username !== undefined && username !== null && username.match(alphanumeric) && username.length <= 16) 
@@ -33,12 +33,15 @@ export function newIDlessMusic(full_name, category_id, track, tags) {
     const checked_category_id = newInt(category_id), checked_track = newInt(track);
     if (full_name !== undefined && full_name !== null && full_name.match(alphanumericAndNonWebCharacters) && full_name.length <= 50
       && checked_category_id !== null && checked_track !== null && Array.isArray(tags)) {
+        for (let i = 0; i < tags.length; i++) {
+            if (!tags[i].match(alphanumericAndNonWebCharacters)) { return null; }
+        }
         return { full_name, category_id: checked_category_id, track: checked_track, tags };
     } else { return null; }
 }
 
 export function newMusic(id, full_name, category_id, track, tags) {
-    const music = newIDlessMusic(full_name, categoru_id, track, tags), checked_id = newInt(id);
+    const music = newIDlessMusic(full_name, category_id, track, tags), checked_id = newInt(id);
     if (checked_id !== null && music !== null) {
         music['id'] = checked_id;
         return music;
