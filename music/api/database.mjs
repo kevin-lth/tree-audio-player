@@ -640,7 +640,7 @@ export async function newConnection() {
                 const result = await statements.getMusic.get({ $music_id: music_id });
                 if (result === undefined) { return null;}
                 const tags = await __getMusicTags(result['music_id']);
-                return __getMusicObjectFromResult(music, tags);
+                return __getMusicObjectFromResult(result, tags);
             } catch (error) {
                 console.log(`[Database] getMusic failed ! music_id = ${music_id}, error = ${error}`);
                 return null;
@@ -649,7 +649,7 @@ export async function newConnection() {
         
         async function updateMusic(music_id, updated_music) {
             try {
-                await statements.updateMusic.run({ $full_name: updated_music.full_name, $track: updated_music.track }); // We voluntarily ignore the category.
+                await statements.updateMusic.run({ $music_id: music_id, $full_name: updated_music.full_name, $track: updated_music.track }); // We voluntarily ignore the category.
                 await __setMusicTags(music_id, updated_music.tags);
                 return true;
             } catch (error) {

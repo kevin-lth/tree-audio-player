@@ -3,7 +3,7 @@ import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryC
 
 import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader, newInt, newBoolean, 
     bodylessResponse, bodylessWithContentLengthResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
-import { newAccount, newIDlessCategory, newCategory, newMusic } from '../common/models.mjs';
+import { newAccount, newIDlessCategory, newCategory, newIDlessMusic, newMusic } from '../common/models.mjs';
 
 const OK = 200, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
@@ -206,6 +206,9 @@ async function category_resource(method, session, parameters, request, response)
         switch (method) {
             case 'HEAD': case 'GET':
                 if (category_id === null) { bodylessResponse(badRequest, response); return; }
+                const category = await connection.getCategory(category_id, include_children, only_direct_children);
+                if (category === null) { bodylessResponse(badRequest, response); return;}
+                // First of all, let's check that this session has the right to access this category.
                 if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
                 // We treat them similarly, HEAD being the same as GET but without the body
                 // If we find undefined (aka the value wasn't sent by the client), we apply a default value.
@@ -213,16 +216,9 @@ async function category_resource(method, session, parameters, request, response)
                 if (parameters['only_direct_children'] === undefined) { parameters['only_direct_children'] = true } 
                 let include_children = newBoolean(parameters['include_children']), only_direct_children = newBoolean(parameters['only_direct_children']);
                 if (include_children === null || only_direct_children === null) { bodylessResponse(badRequest, response); return; }
-                // We can't cut corners here, unfortunately. Since HEAD means GET without the body, we have to go through with the database request to be consistent.
-                // For instance, if the category doesn't exist, we have to throw an error regardless of the HTTP method.
-                // First of all, let's check that this session has the right to access this category.
-                const category = await connection.getCategory(category_id, include_children, only_direct_children);
-                let status_code;
-                if (category === null) { status_code = badRequest; }
-                else { status_code = OK; }
-                if (status_code !== OK) { bodylessResponse(status_code, response); return; }
-                if (method === 'GET') { bodyResponse(status_code, JSON.stringify(category), response); }
-                else { bodylessWithContentLengthResponse(status_code, JSON.stringify(category), response) } // Has to be GET
+                
+                if (method === 'GET') { bodyResponse(OK, JSON.stringify(category), response); }
+                else { bodylessWithContentLengthResponse(OK, JSON.stringify(category), response) } // Has to be HEAD
                 break;
             case 'PUT':
                 if (category_id === null) { bodylessResponse(badRequest, response); return; }
@@ -265,7 +261,6 @@ async function category_resource(method, session, parameters, request, response)
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
         }
-        bodyResponse(OK, '{}', response);
     } else { bodylessResponse(unauthorized, response); }
 }
 
@@ -354,8 +349,59 @@ async function music_resource(method, session, parameters, request, response) {
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
-        // TODO
-        bodyResponse(OK, '{}', response);
+        let done;
+        let music_id = newInt(parameters['id']); // Can't be a constant in the case of POST
+        let music = null;
+        let category_id = null;
+        switch (method) {
+            case 'HEAD': case 'GET':
+                if (music_id === null) { bodylessResponse(badRequest, response); return; }
+                music = await connection.getMusic(music_id);
+                if (music === null) { bodylessResponse(badRequest, response); return; }
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
+
+                if (method === 'GET') { bodyResponse(OK, JSON.stringify(music), response); }
+                else { bodylessWithContentLengthResponse(OK, JSON.stringify(music), response) } // Has to be HEAD
+                break;
+            case 'PUT':
+                if (music_id === null) { bodylessResponse(badRequest, response); return; }
+                music = await connection.getMusic(music_id);
+                if (music === null) { bodylessResponse(badRequest, response); return; }
+                category_id = music.category_id;
+            case 'POST': 
+                let data = await getRequestBody(request);
+                if (data === null) { bodylessResponse(badRequest, response); return; }
+                
+                if (category_id === null) { data.getFieldValue('category_id'); }
+                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
+                let tags = [];
+                try {
+                    tags = JSON.parse(data.getFieldValue('tags'));
+                } catch (error) { bodylessResponse(badRequest, response); return; }
+                let updated_music = newIDlessMusic(data.getFieldValue('full_name'), category_id, data.getFieldValue('track'), tags);
+                if (updated_music === null) { bodylessResponse(badRequest, response); return; }
+                
+                if (method === 'POST') {
+                    music_id = await connection.createMusic(updated_music);
+                    done = music_id !== -1;
+                }
+                else { done = await connection.updateMusic(music_id, updated_music); }
+                
+                if (done) { bodylessResponse(OK, response); return; }
+                else { bodylessResponse(internalServerError, response); return; }
+                break;
+            case 'DELETE':
+                if (music_id === null) { bodylessResponse(badRequest, response); return; }
+                music = await connection.getMusic(music_id);
+                if (music === null) { bodylessResponse(badRequest, response); return; }
+                if (!(await connection.checkCategoryOwnership(music.category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
+                done = await connection.deleteMusic(music_id);
+                if (done) { bodylessResponse(OK, response); return; }
+                else { bodylessResponse(internalServerError, response); return; }
+                break;
+            default:
+                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
+        }
     } else { bodylessResponse(unauthorized, response); }
 }
 

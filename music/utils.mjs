@@ -204,12 +204,12 @@ async function __promise__getRequestBody(request) {
             const data = { rawData: {} };
             
             function getFieldValue(field) {
-                if (data['rawData'][field]['type'] !== 'field') { return null; }
+                if (data['rawData'][field] === undefined || data['rawData'][field]['type'] !== 'field') { return null; }
                 else { return data['rawData'][field]['value']; }
             }
 
             function getFileName(file) {
-                if (data['rawData'][file]['type'] !== 'file') { return null; }
+                if (data['rawData'][file] === undefined || data['rawData'][file]['type'] !== 'file') { return null; }
                 else { return data['rawData'][file]['value']; }
             }
             
