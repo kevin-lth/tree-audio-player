@@ -22,6 +22,7 @@ let routes = {
         resource: category_resource,
         public: category_public,
         personal: category_personal,
+        music: category_music,
     },
     music: {
         file: music_file,
@@ -230,7 +231,6 @@ async function category_resource(method, session, parameters, request, response)
                 let data = await getRequestBody(request);
                 if (data === null) { bodylessResponse(badRequest, response); return; }
                 
-                let account = newAccount(data.getFieldValue('username'), data.getFieldValue('password'));
                 // We ignore the ID if it is included in the body; we want it in the URL
                 let updated_category = newIDlessCategory(data.getFieldValue('full_name'), data.getFieldValue('short_name'), data.getFieldValue('is_public'), session.account_id, undefined);
                 if (updated_category === null) { bodylessResponse(badRequest, response); return; }
@@ -318,6 +318,23 @@ async function category_personal(method, session, parameters, request, response)
                 break;
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
+        }
+    } else { bodylessResponse(unauthorized, response); }
+}
+
+async function category_music(method, session, parameters, request, response) {
+    const validMethods = ['HEAD', 'GET'];
+    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
+    
+    if (session !== null) {
+        if (parameters['include_all_children'] === undefined) { parameters['include_all_children'] = false; }
+        const category_id = newInt(parameters['id']), include_all_children = newBoolean(parameters['include_all_children']);
+        if (category_id === null || include_all_children == null) { bodylessResponse(badRequest, response); return; }
+        const musics = await connection.getAllMusics(category_id, include_all_children);
+        if (musics === null) { bodylessResponse(internalServerError, response); return; }
+        else {
+            if (method === 'GET') { bodyResponse(OK, JSON.stringify(musics), response); return; }
+            else { bodylessWithContentLengthResponse(OK, JSON.stringify(musics), response); return; }
         }
     } else { bodylessResponse(unauthorized, response); }
 }

@@ -38,7 +38,7 @@ export async function newConnection() {
             createMusicTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS music (
                     music_id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
                     track INTEGER NOT NULL,
                     category_id INTEGER NOT NULL,
                     FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE,
@@ -47,7 +47,7 @@ export async function newConnection() {
             createTagTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS tag (
                     tag_id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE
+                    tag_name TEXT NOT NULL UNIQUE
                 );`),
             createAccountCategoriesTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS account_categories (
@@ -102,15 +102,15 @@ export async function newConnection() {
             // We now prepare the statements related to the tables.
             statements = {
                 createAccount: await db.prepare('INSERT INTO account (username, hashed_password) VALUES ($username, $hashed_password);'),
-                getAccount: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE account_id = $account_id;'),
-                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE username = $username;'),
-                updateAccount: await db.prepare('UPDATE account SET username=$username, hashed_password=$hashed_password WHERE account_id = $account_id;'),
+                getAccount: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE account_id=$account_id;'),
+                getAccountFromUsername: await db.prepare('SELECT account_id, username, hashed_password, is_admin FROM account WHERE username=$username;'),
+                updateAccount: await db.prepare('UPDATE account SET username=$username, hashed_password=$hashed_password WHERE account_id=$account_id;'),
                 deleteAccount: await db.prepare('DELETE FROM account WHERE account_id = $account_id;'),
                 // 1209600 seconds = 2 weeks
                 createSession: await db.prepare('INSERT INTO session (account_id, token, expires) VALUES ($account_id, $token, strftime("%s", "now") + 1209600);'),
                 getSession: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE session_id = $session_id;'),
                 getSessionFromToken: await db.prepare('SELECT session_id, account_id, token, expires FROM session WHERE token = $token;'),
-                deleteSession: await db.prepare('DELETE FROM session WHERE session_id = $session_id;'),
+                deleteSession: await db.prepare('DELETE FROM session WHERE session_id=$session_id;'),
                 createCategory: await db.prepare('INSERT INTO category (full_name, short_name, is_public, creator_id) VALUES ($full_name, $short_name, $is_public, $creator_id);'),
                 createZeroCategoryLink: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($category_id, $category_id, 0)'),
                 getCategory: await db.prepare('SELECT category_id, full_name, short_name, is_public, creator_id FROM category WHERE category_id = $category_id;'),
@@ -170,6 +170,21 @@ export async function newConnection() {
                     `SELECT COUNT(1) AS checkCount FROM category WHERE (category_id=$category_id AND 
                         creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id);`),
                 deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id;`),
+                getAllMusicsFromCategory: await db.prepare(`SELECT music_id, full_name, category_id, track FROM music WHERE category_id=$category_id;`),
+                getAllMusicsFromCategoryAndChildren: await db.prepare(
+                    `SELECT music_id, full_name, category_id, track FROM music WHERE category_id IN 
+                        (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id);`),
+                createMusic: await db.prepare('INSERT INTO music (full_name, category_id, track) VALUES ($full_name, $category_id, $track);'),
+                getMusic: await db.prepare('SELECT music_id, full_name, category_id, track FROM music WHERE music_id=$music_id;'),
+                updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, track=$track WHERE music_id=$music_id;'),
+                deleteMusic: await db.prepare('DELETE FROM music WHERE music_id = $music_id;'),
+                createTag: await db.prepare('INSERT INTO tag (tag_name) VALUES ($tag_name);'),
+                getTagFromName: await db.prepare('SELECT tag_id, tag_name FROM tag WHERE tag_name=$tag_name;'),
+                bindTagToMusic: await db.prepare('INSERT INTO music_tags (music_id, tag_id) VALUES ($music_id, $tag_id);'),
+                getTagsFromMusic: await db.prepare(
+                    `SELECT tag.tag_id, tag.tag_name FROM tag INNER JOIN music_tags ON tag.tag_id=music_tags.tag_id WHERE music_tags.music_id=$music_id;`),
+                hasMusicTag: await db.prepare('SELECT COUNT(1) as checkCount FROM music_tags WHERE music_id=$music_id AND tag_id=$tag_id;'),
+                removeAllMusicTags: await db.prepare('DELETE FROM music_tags WHERE music_id=$music_id;'),
             };
         }
         await initDatabase();
@@ -558,22 +573,99 @@ export async function newConnection() {
             }
         }
         
+        async function getAllMusics(category_id, include_all_children = false) {
+            try {
+                let result;
+                if (include_all_children) { result = await statements.getAllMusicsFromCategoryAndChildren.all({ $category_id: category_id }); }
+                else { result = await statements.getAllMusicsFromCategory.all({ $category_id: category_id }); }
+                if (result === undefined) { return null; }
+                const musics = [];
+                for (let i = 0; i < result.length; i++) {
+                    const music = result[i];
+                    const tags = __getMusicTags(music['music_id']);
+                    musics.push(__getMusicObjectFromResult(music, tags));
+                }
+                return musics;
+            } catch (error) {
+                console.log(`[Database] getAllMusics failed ! category_id = ${category_id}, include_all_children = ${include_all_children}, error = ${error}`);
+                return null;
+            }
+        }
+        
         // Music
         
-        async function createMusic(name, category_id, track, is_public = false, account_id) {
+        // Util functions
+        function __getMusicObjectFromResult(music_result, tags) {
+            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, tags);
+        }
         
+        async function __setMusicTags(music_id, tags) {
+            if (tags !== undefined && tags !== null) {
+                await statements.removeAllMusicTags.run({ $music_id: music_id });
+                for (let i = 0; i < tags.length; i++) {
+                    const tag = tags[i];
+                    const result = await statements.getTagFromName.get({ $tag_name: tag });
+                    let tag_id;
+                    if (result === undefined) { await statements.createTag.run({ $tag_name: tag }); tag_id = await getLastID(); } // The tag doesn't exist in the database
+                    else { tag_id = result['tag_id']; }
+                    const bind_result = await statements.hasMusicTag.get({ $music_id: music_id, $tag_id: tag_id });
+                    if (bind_result === undefined || bind_result['checkCount'] === 0) { await statements.bindTagToMusic.run({ $music_id: music_id, $tag_id: tag_id }); }
+                }
+            }
+        }
+        
+        async function __getMusicTags(music_id) {
+            const result = await statements.getTagsFromMusic.all({ $music_id: music_id }), tags = [];
+            if (result === undefined) { return []; }
+            for (let i = 0; i < result.length; i++) {
+                tags.push(result[i].tag_name);
+            }
+            return tags;
+        }
+        
+        async function createMusic(music) {
+            try {
+                await statements.createMusic.run({ $full_name: music.full_name, $category_id: music.category_id, $track: music.track });
+                const music_id = await getLastID();
+                await __setMusicTags(music_id, music.tags);
+                return music_id;
+            } catch (error) {
+                console.log(`[Database] createMusic failed ! full_name = ${music.full_name}, category_id = ${music.category_id}, track = ${music.track}, tags = ${music.tags}, error = ${error}`);
+                return -1;
+            }
         }
         
         async function getMusic(music_id) {
-        
+            try {
+                const result = await statements.getMusic.get({ $music_id: music_id });
+                if (result === undefined) { return null;}
+                const tags = await __getMusicTags(result['music_id']);
+                return __getMusicObjectFromResult(music, tags);
+            } catch (error) {
+                console.log(`[Database] getMusic failed ! music_id = ${music_id}, error = ${error}`);
+                return null;
+            }
         }
         
-        async function updateMusic(music) {
-        
+        async function updateMusic(music_id, updated_music) {
+            try {
+                await statements.updateMusic.run({ $full_name: updated_music.full_name, $track: updated_music.track }); // We voluntarily ignore the category.
+                await __setMusicTags(music_id, updated_music.tags);
+                return true;
+            } catch (error) {
+                console.log(`[Database] updateMusic failed ! music_id = ${music_id}, updated_full_name = ${updated_music.full_name}, updated_track = ${updated_music.track}, tags = ${updated_music.tags}, error = ${error}`);
+                return false;
+            }
         }
         
         async function deleteMusic(music_id) {
-        
+            try {
+                await statements.deleteMusic.run({ $music_id: music_id });
+                return true;
+            } catch (error) {
+                console.log(`[Database] deleteMusic failed ! music_id = ${music_id}, error = ${error}`);
+                return false;
+            }
         }
         
         async function addMusicFormatAndURL(music_id, format, music_url) {
@@ -588,21 +680,9 @@ export async function newConnection() {
         
         }
         
-        async function addTag(name) {
-        
-        }
-        
-        async function getTagFromName(name) {
-        
-        }
-        
-        async function setMusicTag(music_id, tag_id) {
-        
-        }
-        
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess };
-    } catch (exception) {
-        console.log(`[Database Failure] ${exception}`);
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic };
+    } catch (error) {
+        console.log(`[Database] Error when trying to initialize ! error = ${error}`);
         return { available: false};
     }
 }
