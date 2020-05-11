@@ -372,7 +372,7 @@ async function music_resource(method, session, parameters, request, response) {
                 let data = await getRequestBody(request);
                 if (data === null) { bodylessResponse(badRequest, response); return; }
                 
-                if (category_id === null) { data.getFieldValue('category_id'); }
+                if (category_id === null) { category_id = data.getFieldValue('category_id'); }
                 if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
                 let tags = [];
                 try {
