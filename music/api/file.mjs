@@ -125,10 +125,3 @@ export async function deleteTempFile(temp_name) {
     }
 }
 
-if (false) {
-    getCategoryCover('I_DO_NOT_EXIST').then((result) => { 
-        console.log(result);
-        easyimage.info('media/music/default_cover.png').then((result, error) => { console.log(result, error); });
-});
-}
-
