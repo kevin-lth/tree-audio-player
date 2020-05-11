@@ -371,7 +371,7 @@ async function music_file(method, session, parameters, request, response) {
                 bodylessResponse(accepted, response);
                 
                 const result = await processMusicFile(data.getFileName('file'));
-                if (result === null) { return; } // No response necessary
+                if (result === null) { await deleteTempFile(data.getFileName('file')); return; } // No response necessary
                 
                 const keys = Object.keys(result);
                 for (let i = 0; i < keys.length; i++) {
