@@ -211,7 +211,7 @@ export async function newConnection() {
         async function createAccount(account) {
             // We assume that account is using the power class defined earlier, and so we don't have to do sanity checks again.
             // The salt is stored inside the string, so we don't have to worry about storing it ourselves
-            const hashed_password = await bcrypt.hash(account.password, 12);
+            const hashed_password = await bcrypt.hash(account.password, 11);
             try {
                 await statements.createAccount.run({ $username: account.username, $hashed_password: hashed_password });
                 return await getLastID();
@@ -236,10 +236,8 @@ export async function newConnection() {
         async function checkAccountCredentials(account) {
             try {
                 const db_account = await statements.getAccountFromUsername.get({ $username: account.username });
-                const known_username = db_account !== undefined;
-                // The reason we don't return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
-                const check = await bcrypt.compare(account.password, db_account.hashed_password);
-                if (known_username && check) { return db_account.account_id; } 
+                if (db_account !== undefined) { return -1 }
+                if (await bcrypt.compare(account.password, db_account.hashed_password)) { return db_account.account_id; } 
                 else { return -1; }
             } catch (error) {
                 console.log(`[Database] checkAccountCredentials failed ! username = ${account.username}, error = ${error}`);
@@ -329,7 +327,7 @@ export async function newConnection() {
             }
         }
         
-        async function getCategory(category_id, include_children = false, only_direct_children = true) {
+        async function getCategory(category_id, include_children, only_direct_children) {
             try {
                 const category = await statements.getCategory.get({ $category_id: category_id });
                 if (category === undefined) { return null; }
@@ -391,7 +389,10 @@ export async function newConnection() {
             try {
                 const result = await statements.getCategoryCoverURL.get({ $category_id: category_id });
                 if (result === undefined) { return null; }
-                else { return result['cover_url']; }
+                else {
+                    if (result['cover_url'] === null) { return undefined; }
+                    else { return result['cover_url']; }
+                }
             } catch (error) {
                 console.log(`[Database] getCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
                 return null;
@@ -576,7 +577,7 @@ export async function newConnection() {
             }
         }
         
-        async function getAllMusics(category_id, include_all_children = false) {
+        async function getAllMusics(category_id, include_all_children) {
             try {
                 let result;
                 if (include_all_children) { result = await statements.getAllMusicsFromCategoryAndChildren.all({ $category_id: category_id }); }
@@ -708,6 +709,7 @@ export async function newConnection() {
         }
         
         return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic, addMusicFormatAndURL, getMusicFormatsAndURLs, removeMusicFormat };
+        
     } catch (error) {
         console.log(`[Database] Error when trying to initialize ! error = ${error}`);
         return { available: false};
