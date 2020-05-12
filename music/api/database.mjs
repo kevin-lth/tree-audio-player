@@ -586,7 +586,8 @@ export async function newConnection() {
                 for (let i = 0; i < result.length; i++) {
                     const music = result[i];
                     const tags = await __getMusicTags(music['music_id']);
-                    musics.push(__getMusicObjectFromResult(music, tags));
+                    const formats = Object.keys(await getMusicFormatsAndURLs(music_id));
+                    musics.push(__getMusicObjectFromResult(music, tags, formats));
                 }
                 return musics;
             } catch (error) {
@@ -598,8 +599,8 @@ export async function newConnection() {
         // Music
         
         // Util functions
-        function __getMusicObjectFromResult(music_result, tags) {
-            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, tags);
+        function __getMusicObjectFromResult(music_result, tags, formats) {
+            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, tags, formats);
         }
         
         async function __setMusicTags(music_id, tags) {
@@ -643,7 +644,8 @@ export async function newConnection() {
                 const result = await statements.getMusic.get({ $music_id: music_id });
                 if (result === undefined) { return null;}
                 const tags = await __getMusicTags(result['music_id']);
-                return __getMusicObjectFromResult(result, tags);
+                const formats = Object.keys(await getMusicFormatsAndURLs(music_id));
+                return __getMusicObjectFromResult(result, tags, formats);
             } catch (error) {
                 console.log(`[Database] getMusic failed ! music_id = ${music_id}, error = ${error}`);
                 return null;

@@ -41,10 +41,19 @@ export function newIDlessMusic(full_name, category_id, track, tags) {
     } else { return null; }
 }
 
-export function newMusic(id, full_name, category_id, track, tags) {
-    const music = newIDlessMusic(full_name, category_id, track, tags), checked_id = newInt(id);
+export function newMusic(id, full_name, category_id, track, tags, formats) {
+    const music = newIDlessMusic(full_name, category_id, track, tags), checked_id = newInt(id), checked_formats = [];
     if (checked_id !== null && music !== null) {
         music['id'] = checked_id;
+        if (formats === undefined || Array.isArray(formats)) {
+            if (formats !== undefined) {
+                for (let i = 0; i < formats.length; i++) {
+                    if (!formats[i].match(alphanumericAndNonWebCharacters)) { return null; }
+                    else { checked_formats.push(formats[i].trim()); }
+                }
+            }
+        }
+        music['formats'] = checked_formats;
         return music;
     } else { return null; }
 }
