@@ -1,13 +1,8 @@
 import { newConnection } from './database.mjs';
 import { getAudioFormats, getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile, deleteTempFile } from './file.mjs';
 
-import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader } from './../utils.mjs'
-import { newAccount, newIDlessCategory, newCategory, newIDlessMusic, newMusic } from '../common/models.mjs';
-
 const OK = 200, accepted = 202, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
-
-const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*,application/octet-stream');
 
 const default_audio_format = 'ogg|opus-96';
 

@@ -206,8 +206,8 @@ async function handleCategoryResource(method, token, parameters, request, respon
     }
 }
 
-async function handle_category_cover(method, session, parameters, request, response) {
-    const validMethods = ['HEAD', 'GET', 'POST'];
+async function handle_category_cover(method, token, parameters, request, response) {
+    `const validMethods = ['HEAD', 'GET', 'POST'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
@@ -246,7 +246,25 @@ async function handle_category_cover(method, session, parameters, request, respo
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
         }
-    } else { bodylessResponse(unauthorized, response); }
+    } else { bodylessResponse(unauthorized, response); }`
+    let api_response;
+    const category_id = newInt(parameters['id']); // We use the ID for every method, so we might as well do the check here.
+    if (category_id === null) { bodylessResponse(badRequest, response); return; }
+    switch (method) {
+        case 'HEAD': case 'GET':
+            const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
+            // TODO: Finish
+            break;
+        case 'POST':
+            const data = await getRequestBody(request);
+            if (data === null) { bodylessResponse(badRequest, response); return; }
+            const cover_file = data.getFileName('cover');
+            if (cover_file === null || !accept_image.isAccepted(newMimeType(cover_data['mime_type']))) { bodylessResponse(badRequest, response); return; }
+            // TODO: Finish
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
 }
 
 async function handle_category_public(method, session, parameters, request, response) {

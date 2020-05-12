@@ -1,9 +1,10 @@
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 import easyimage from 'easyimage';
 import ffmpeg from 'fluent-ffmpeg';
 
-const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = './temp/';
+const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir();
 
 // You might need to change your values for your own installation
 const audio_formats = {
@@ -114,15 +115,6 @@ export async function processMusicFile(file_name) {
     } catch (error) {
         console.log(`[File] processMusicFile failed ! file_name = ${file_name}, error = ${error}. Ignoring file sent by client.`);
         return null;
-    }
-}
-
-export async function deleteTempFile(temp_name) {
-    try {
-        return await fs.promises.unlink(__getTempURL(temp_name));
-    } catch (error) {
-        console.log(`[File] deleteTempFile failed ! temp_name = ${temp_name}, error = ${error}.`);
-        return false;
     }
 }
 

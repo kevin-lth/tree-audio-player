@@ -190,11 +190,13 @@ export function bodyStreamResponse(status_code, body, request, response) {
 //
 
 import fs from 'fs';
+import os from 'os';
 import Busboy from 'busboy';
 import crypto from 'crypto';
 
-const temp_dir = './temp/';
+const temp_dir = os.tmpdir();
 
+// TODO : add a function to clean all temporary files once done
 async function __promise__getRequestBody(request) {
     return new Promise((resolve, reject) => {
         try {
