@@ -315,9 +315,9 @@ export async function newConnection() {
             return newCategory(category_result.category_id, category_result.full_name, category_result.short_name, category_result.is_public === 1, category_result.creator_id, children);
         }
         
-        async function createCategory(category) {
+        async function createCategory(category, account_id) {
             try {
-                await statements.createCategory.run({ $full_name: category.full_name, $short_name: category.short_name, $is_public: category.is_public, $creator_id: category.creator_id });
+                await statements.createCategory.run({ $full_name: category.full_name, $short_name: category.short_name, $is_public: category.is_public, $creator_id: account_id });
                 const category_id = await getLastID();
                 await statements.createZeroCategoryLink.run({ $category_id: category_id });
                 return category_id;
