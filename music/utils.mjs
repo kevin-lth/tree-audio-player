@@ -137,12 +137,8 @@ export function newBoolean(boolean) {
     else { return boolean };
 }
 
-export function bodylessResponse(status_code, response) {
-    response.statusCode = status_code;
-    response.end();
-}
-
-export function bodylessWithContentLengthResponse(status_code, body, response) {
+// We still ask for the potential body to get the content-length (useful for HEAD requests)
+export function bodylessResponse(status_code, body, response) {
     response.setHeader('Content-Length', Buffer.byteLength(body));
     response.statusCode = status_code;
     response.end();
