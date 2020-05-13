@@ -23,7 +23,7 @@ let routes = {
     },
     category: {
         resource: handleCategoryResource,
-        cover: handle_category_cover,
+        cover: handleCategoryCover,
         public: handle_category_public,
         personal: handle_category_personal,
         music: handle_category_music,
@@ -208,7 +208,7 @@ async function handleCategoryResource(method, token, parameters, request, respon
     }
 }
 
-async function handle_category_cover(method, token, parameters, request, response) {
+async function handleCategoryCover(method, token, parameters, request, response) {
     let api_response;
     const category_id = newInt(parameters['id']); // We use the ID for every method, so we might as well do the check here.
     if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
