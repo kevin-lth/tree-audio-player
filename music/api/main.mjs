@@ -1,5 +1,5 @@
 import { getAPI } from './api.mjs';
-import { getAudioFormats, getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile, deleteTempFile } from './file.mjs';
+import { getAudioFormats, getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile } from './file.mjs';
 
 import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader, newInt, newBoolean, 
     bodylessResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
@@ -121,11 +121,12 @@ async function handleAccountRegister(method, token, parameters, request, respons
             const data = await getRequestBody(request);
             if (data === null) { bodylessResponse(badRequest, '', response); return; }
             const account = newAccount(data.getFieldValue('username'), data.getFieldValue('password'));
-            if (account === null) { bodylessResponse(badRequest, '', response); return; } 
+            if (account === null) { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; } 
             
             api_response = await API.registerAccount(token, account);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, response); }
             else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            await data.deleteAllTemporaryFiles(); // Just in case the client upload files
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
@@ -139,7 +140,7 @@ async function handleAccountLogin(method, token, parameters, request, response) 
             const data = await getRequestBody(request);
             if (data === null) { bodylessResponse(badRequest, '', response); return; }
             const account = newAccount(data.getFieldValue('username'), data.getFieldValue('password'));
-            if (account === null) { bodylessResponse(badRequest, '', response); return; } 
+            if (account === null) { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; } 
             
             api_response = await API.loginAccount(token, account);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
@@ -147,6 +148,7 @@ async function handleAccountLogin(method, token, parameters, request, response) 
                 response.setHeader('Set-Cookie', `token=${api_response.response.token}; Max-Age=1209600; Secure; HttpOnly`); // 1209600 seconds = 2 weeks
                 bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response);
             }
+            await data.deleteAllTemporaryFiles();
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
@@ -186,15 +188,17 @@ async function handleCategoryResource(method, token, parameters, request, respon
             if (data === null) { bodylessResponse(badRequest, '', response); return; }
             const id_less_category = newIDlessCategory(data.getFieldValue('full_name'), data.getFieldValue('short_name'), data.getFieldValue('is_public'), undefined);
             const parent_category_id = newInt(data.getFieldValue('parent_id'));
-            if (id_less_category === null || (data.getFieldValue('parent_id') !== null && parent_category_id === null)) { bodylessResponse(badRequest, '', response); return; }
+            if (id_less_category === null || (data.getFieldValue('parent_id') !== null && parent_category_id === null)) 
+                { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; }
             
             if (method === 'POST') { api_response = await API.addCategory(token, id_less_category, parent_category_id); }
             else if (category_id !== null) { api_response = await API.updateCategory(token, category_id, id_less_category, parent_category_id); }
-            else { bodylessResponse(badRequest, '', response); return; } // Method is PUT, but category_id is invalid
+            else { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; } // Method is PUT, but category_id is invalid
             
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
             else if (method === 'POST') { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); } // We need to send back the new category's ID
             else { bodylessResponse(api.response.http_code, '', response); }
+            await data.deleteAllTemporaryFiles();
             break;
         case 'DELETE':
             if (category_id === null) { bodylessResponse(badRequest, '', response); return; }

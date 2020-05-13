@@ -16,7 +16,7 @@ export function getAudioFormats() { return audio_formats; }
 
 function __getCoverURL(cover_url) { return cover_dir + `${cover_url}.png`; }
 function __getMusicURL(music_url, format) { return music_dir + `${music_url}.${format.extension}`; }
-function __getTempURL(temp_url) { return temp_dir + temp_url; }
+function __getTempURL(url) { return `${temp_dir}/${url}` }
 
 async function __getStream(path, mime_type, range = null) {
     try {

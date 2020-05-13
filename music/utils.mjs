@@ -213,16 +213,31 @@ async function __promise__getRequestBody(request) {
                 else { return data['rawData'][file]['value']; }
             }
             
+            function __getTempURL(url) { return `${temp_dir}/${url}` }
+            
+            async function deleteAllTemporaryFiles() {
+                const keys = Object.keys(data['rawData']);
+                for (let i = 0; i < keys.length; i++) {
+                    const value = data['rawData'][keys[i]];
+                    if (value['type'] === 'file') {
+                        try { await fs.promises.unlink(__getTempURL(value['value'])); } 
+                        catch (error) { console.log('[Request (Body)] Error when deleting temporary file "', keys[i] , '" : ', error); }
+                    }
+                }
+            }
+            
             data['getFieldValue'] = getFieldValue;
             data['getFileName'] = getFileName;
+            data['deleteAllTemporaryFiles'] = deleteAllTemporaryFiles;
             const stream_promises = [];
             busboy.on('field', (fieldname, value, fieldname_truncated, val_truncated, encoding, mime_type) => {
                 data.rawData[fieldname] = { type: 'field', value, encoding, mime_type };
             });
             busboy.on('file', (fieldname, stream, filename, encoding, mime_type) => {
                 const temp_name = crypto.randomBytes(16).toString('hex');
+                console.log(__getTempURL(temp_name));
                 // We will save the file in a temporary directory. We ignore the filename for security reasons.
-                let file = fs.createWriteStream(temp_dir + temp_name);
+                let file = fs.createWriteStream(__getTempURL(temp_name));
                 stream.pipe(file);
                 data.rawData[fieldname] = { type: 'file', value: temp_name, encoding, mime_type };
                 
