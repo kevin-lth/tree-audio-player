@@ -25,7 +25,7 @@ let routes = {
         resource: handleCategoryResource,
         cover: handleCategoryCover,
         public: handleCategoryPublic,
-        personal: handle_category_personal,
+        personal: handleCategoryPersonal,
         music: handle_category_music,
     },
     music: {
@@ -250,7 +250,7 @@ async function handleCategoryPublic(method, token, parameters, request, response
     }
 }
 
-async function handle_category_personal(method, token, parameters, request, response) {
+async function handleCategoryPersonal(method, token, parameters, request, response) {
     let api_response;
     const category_id = newInt(parameters['id']);
     switch (method) {
