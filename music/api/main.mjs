@@ -251,42 +251,6 @@ async function handleCategoryPublic(method, token, parameters, request, response
 }
 
 async function handle_category_personal(method, token, parameters, request, response) {
-    `const validMethods = ['HEAD', 'GET', 'POST', 'DELETE'];
-    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (session !== null) {
-        const category_id = newInt(parameters['id']);
-        switch (method) {
-            case 'HEAD': case 'GET':
-                const categories = await connection.getAllPersonalCategories(session.account_id);
-                if (categories === null) { bodylessResponse(internalServerError, response); return; }
-                else {
-                    if (method === 'GET') { bodyResponse(OK, JSON.stringify(categories), response); return; }
-                    else { bodylessResponse(OK, JSON.stringify(categories), response); return; }
-                }
-                break;
-            case 'POST':
-                if (category_id === null) { bodylessResponse(badRequest, response); return; }
-                if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
-                else {
-                    let done = await connection.grantCategoryAccess(category_id, session.account_id);
-                    if (!done) { bodylessResponse(internalServerError, response); return; }
-                    else { bodylessResponse(OK, response); return; }
-                }
-                break;
-            case 'DELETE':
-                if (category_id === null) { bodylessResponse(badRequest, response); return; }
-                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
-                else {
-                    let done = await connection.revokeCategoryAccess(category_id, session.account_id);
-                    if (!done) { bodylessResponse(internalServerError, response); return; }
-                    else { bodylessResponse(OK, response); return; }
-                }
-                break;
-            default:
-                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
-        }
-    } else { bodylessResponse(unauthorized, response); }`
     let api_response;
     const category_id = newInt(parameters['id']);
     switch (method) {
