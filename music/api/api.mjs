@@ -1,5 +1,5 @@
 import { newConnection } from './database.mjs';
-import { getAudioFormats, getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile } from './file.mjs';
+import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile } from './file.mjs';
 
 const OK = 200, accepted = 202, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
@@ -173,7 +173,46 @@ export function getAPI() {
         }
     }
     
-    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory };
+    async function getCategoryCover(token, category_id, range = null) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            const cover_url = await connection.getCategoryCoverURL(category_id);
+            let cover;
+            if (cover_url === null) { return newAPIResponse(null, notFound); } // Shouldn't happen, except if we are an admin and are looking at an invalid category
+            else if (cover_url === undefined) { cover = await getDefaultCategoryCoverStream(range); }
+            else { cover = await getCategoryCoverStream(cover_url, range); }
+            if (cover === null) { // The URL is known by the database but the file doesn't exist : there was most likely outside tampering.
+                console.log('[API] Problem encountered when getting a category cover : the URL is known by the databse but the corresponding file doesn\'t exist. This should not occur, please check both the database and your file system for any issues.');
+                return newAPIResponse(null, internalServerError);
+            } else {
+                let status_code = OK;
+                if (cover.partial) { status_code = partialContent; }
+                return newAPIResponse(cover, status_code);
+            }
+            
+        }
+    }
+    
+    async function setCategoryCover(token, category_id, temporary_url) { // EasyImage requires a URL. We could ask for a stream and try a work around but that would defeat the way we handle the request's body.
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            const cover_url = await processCategoryCover(temporary_url);
+            if (cover_url === null) { return newAPIResponse(null, badRequest); }
+            else {
+                const done = await connection.setCategoryCoverURL(category_id, cover_url);
+                if (!done) { return newAPIResponse(null, internalServerError); }
+                else { return newAPIResponse(null, OK); }
+            }
+        }
+    }
+    
+    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover };
 
 }
 

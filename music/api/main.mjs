@@ -39,19 +39,17 @@ let API = getAPI();
 // Deal with a request.
 export async function handle(url, request, response) {   
     let acceptTypes = newAcceptHeader(request.headers['accept']);
-    if (acceptTypes === null) { bodylessResponse(badRequest, response); return; }
+    if (acceptTypes === null) { bodylessResponse(badRequest, '', response); return; }
+    else if (!(acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' }) 
+        && acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: '*' })
+        && acceptTypes.isAccepted({ mimeType: 'audio', mimeSubtype: '*' }) )) { bodylessResponse(notAcceptable, '', response); return; }
+    // Except for 2 specific requests, we will send JSON in the body
+    response.setHeader('Content-Type', 'application/json');
+        
     const method = request.headers[':method'];
     const token = await getToken(request);
     console.log(`[Request (API)] ${method} /${url.paths.join('/')}`);
     console.log('[Request (API)] URL Parameters: ', url.parameters);
-    
-    // We check to see if the client accepts a JSON and set every response to be a JSON
-    // There is one exception to this content-type, however it will be dealt in the function responsible for this type of request
-    if (!(acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' }) 
-        && acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: '*' })
-        && acceptTypes.isAccepted({ mimeType: 'audio', mimeSubtype: '*' }) )) { bodylessResponse(notAcceptable, response); return; }
-    // Except for 2 specific requests, we will send JSON in the body
-    response.setHeader('Content-Type', 'application/json');
 
     let currentRoutes = routes;
     let processed = false;
@@ -67,7 +65,7 @@ export async function handle(url, request, response) {
                 else { bodylessResponse(notFound, response); }
                 processed = true;
             } else { currentRoutes = result; } // The route is still incomplete. We can go on shifting the array, as the path will be empty if it reaches the end
-        } else { bodylessResponse(notFound, response); processed = true; }
+        } else { bodylessResponse(notFound, '', response); processed = true; }
     }
 }
 
@@ -211,60 +209,27 @@ async function handleCategoryResource(method, token, parameters, request, respon
 }
 
 async function handle_category_cover(method, token, parameters, request, response) {
-    `const validMethods = ['HEAD', 'GET', 'POST'];
-    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (session !== null) {
-        const category_id = newInt(parameters['id']);
-        if (category_id === null) { bodylessResponse(badRequest, response); return; }
-        switch (method) {
-            case 'HEAD': case 'GET':
-                const cover_url = await connection.getCategoryCoverURL(category_id);
-                const range = newRangeHeader(request.headers['range']);
-                let cover;
-                // If it is null, we just send the default cover right away. Otherwise, we try to fetch the corresponding file with the cover URL obtained
-                if (cover_url === null) { cover = await getDefaultCategoryCoverStream(range); }
-                else { cover = await getCategoryCoverStream(cover_url, range); }
-                if (cover === null) { bodylessResponse(notFound, response); return; }
-                let status_code;
-                if (cover.partial) { status_code = partialContent; }
-                else { status_code = OK; }
-                
-                if (method === 'GET') { bodyStreamResponse(status_code, cover, request, response); }
-                else { bodylessStreamResponse(status_code, cover, response); }
-                break;
-            case 'POST':
-                const data = await getRequestBody(request);
-                if (data === null) { bodylessResponse(badRequest, response); return; }
-                const cover_data = data.rawData['cover'];
-                if (cover_data === undefined || cover_data === null || !accept_image.isAccepted(newMimeType(cover_data['mime_type']))) { 
-                    bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('cover')); return;
-                }
-                const new_cover_url = await processCategoryCover(data.getFileName('cover'));
-                if (new_cover_url === null) { bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('cover')); return; }
-                await connection.setCategoryCoverURL(category_id, new_cover_url);
-                bodylessResponse(OK, response);
-                // We delete the temporary file regardless of the outcome.
-                await deleteTempFile(data.getFileName('cover'));
-                break;
-            default:
-                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
-        }
-    } else { bodylessResponse(unauthorized, response); }`
     let api_response;
     const category_id = newInt(parameters['id']); // We use the ID for every method, so we might as well do the check here.
-    if (category_id === null) { bodylessResponse(badRequest, response); return; }
+    if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
     switch (method) {
         case 'HEAD': case 'GET':
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
-            // TODO: Finish
+            api_response = await API.getCategoryCover(token, category_id, range);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
+            else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
             break;
         case 'POST':
             const data = await getRequestBody(request);
             if (data === null) { bodylessResponse(badRequest, response); return; }
             const cover_file = data.getFileName('cover');
-            if (cover_file === null || !accept_image.isAccepted(newMimeType(cover_data['mime_type']))) { bodylessResponse(badRequest, response); return; }
-            // TODO: Finish
+            if (cover_file === null || !accept_image.isAccepted(newMimeType(data['rawData']['cover']['mime_type']))) 
+                { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; }
+            
+            api_response = await API.setCategoryCover(token, category_id, cover_file);
+            bodylessResponse(api_response.http_code, '', response);
+            await data.deleteAllTemporaryFiles();
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);

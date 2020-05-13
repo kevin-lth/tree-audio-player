@@ -388,9 +388,9 @@ export async function newConnection() {
         async function getCategoryCoverURL(category_id) {
             try {
                 const result = await statements.getCategoryCoverURL.get({ $category_id: category_id });
-                if (result === undefined) { return null; }
+                if (result === undefined) { return null; } // The category doesn't exist
                 else {
-                    if (result['cover_url'] === null) { return undefined; }
+                    if (result['cover_url'] === null) { return undefined; } // The category exists and uses the default cover
                     else { return result['cover_url']; }
                 }
             } catch (error) {
