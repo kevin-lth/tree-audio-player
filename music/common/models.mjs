@@ -20,12 +20,12 @@ export function newIDlessCategory(full_name, short_name, is_public, children) {
     } else { return null; }
 }
 
-export function newCategory(id, name, short_name, is_public, creator_id, children) {
-    const category = newIDlessCategory(name, short_name, is_public, children), checked_id = newInt(id), checked_creator_id = newInt(creator_id);
+export function newCategory(id, name, short_name, is_public, creator, children) {
+    const category = newIDlessCategory(name, short_name, is_public, children), checked_id = newInt(id);
     // We only check the validity of the ID.
-    if (checked_id !== null && checked_creator_id !== null && category !== null) {
+    if (checked_id !== null && (creator !== undefined && creator !== null && creator.match(alphanumeric) && creator.length <= 16) && category !== null) {
         category['id'] = checked_id;
-        category['creator_id'] = checked_creator_id;
+        category['creator'] = creator;
         return category;
     } else { return null; }
 }
