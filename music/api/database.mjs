@@ -421,8 +421,8 @@ export async function newConnection() {
                     return categories;
                 }
             } catch (error) {
-                console.log(`[Database] getAllPublicCategories failed ! category_id = ${category_id}, error = ${error}`);
-                return false;
+                console.log(`[Database] getAllPublicCategories failed ! error = ${error}`);
+                return null;
             }
         }
         
@@ -438,8 +438,8 @@ export async function newConnection() {
                     return categories;
                 }
             } catch (error) {
-                console.log(`[Database] getAllPublicCategories failed ! category_id = ${category_id}, error = ${error}`);
-                return false;
+                console.log(`[Database] getAllPublicCategories failed ! error = ${error}`);
+                return null;
             }
         }
         
