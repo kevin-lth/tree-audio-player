@@ -31,7 +31,7 @@ export function getAPI() {
     async function getSessionStatus(token) {
         if (!(await __prepareConnection())) { return newAPIResponse(null, internalServerError); } // We don't use checkSession because we want a normal response if the server works but the session doesn't exist
         const session = await connection.getSessionFromToken(token);
-        if (session === null) { return newAPIResponse({ username: null }, OK); }
+        if (session === null) { return newAPIResponse({ id: null, username: null }, OK); }
         else {
             const account = await connection.getAccount(session.account_id);
             if (account === null) { return newAPIResponse(null, internalServerError); }
@@ -40,9 +40,8 @@ export function getAPI() {
     }
 
     async function getAccountProfile(token, account_id) {
-        if (!(await __prepareConnection())) { return newAPIResponse(null, internalServerError); } // We don't use checkSession because we want a normal response if the server works but the session doesn't exist
-        const session = await connection.getSessionFromToken(token);
-        if (session === null) { return newAPIResponse(null, unauthorized); }
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
         else {
             const account = await connection.getAccount(account_id);
             if (account === null) { return newAPIResponse(null, notFound); }
@@ -139,7 +138,7 @@ export function getAPI() {
             if (previous_category === null) { return newAPIResponse(null, badRequest); }
             const updated = await connection.updateCategory(category_id, id_less_updated_category);
             if (!updated) { // This should not occur unless something is wrong with the database
-                console.log('[API] Problem encountered when updating a category : it exists, but the update failed. However, the updated values were checked beforehand... Please check the database for any issues.');
+                console.log('[API] Problem encountered when updating a category : the category exists, but its update failed. However, the updated values were checked beforehand... Please check the database for any issues.');
                 return newAPIResponse(null, badRequest);
             }
             else { 
@@ -185,7 +184,7 @@ export function getAPI() {
             else if (cover_url === undefined) { cover = await getDefaultCategoryCoverStream(range); }
             else { cover = await getCategoryCoverStream(cover_url, range); }
             if (cover === null) { // The URL is known by the database but the file doesn't exist : there was most likely outside tampering.
-                console.log('[API] Problem encountered when getting a category cover : the URL is known by the databse but the corresponding file doesn\'t exist. This should not occur, please check both the database and your file system for any issues.');
+                console.log('[API] Problem encountered when getting a category cover : the URL is known by the database but the corresponding file doesn\'t exist. This should not occur, please check both the database and your file system for any issues.');
                 return newAPIResponse(null, internalServerError);
             } else {
                 let status_code = OK;
@@ -212,7 +211,45 @@ export function getAPI() {
         }
     }
     
-    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover };
+    async function getPublicCategories(token) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const categories = await connection.getAllPublicCategories();
+            if (categories === null) { return newAPIResponse(null, internalServerError); }
+            else { return newAPIResponse(categories, OK); }
+        }
+    }
+    
+    async function addPersonalCategory(token, category_id) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+        }
+    }
+    
+    async function getPersonalCategories(token) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            const categories = await connection.getAllPersonalCategories(session.account_id);
+            if (categories === null) { return newAPIResponse(null, internalServerError); }
+            else { return newAPIResponse(categories, OK); }
+        }
+    }
+    
+    async function revokePersonalCategory(token, category_id) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response; // TODO
+        }
+    }
+    
+    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory };
 
 }
 

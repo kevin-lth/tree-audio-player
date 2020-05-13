@@ -24,7 +24,7 @@ let routes = {
     category: {
         resource: handleCategoryResource,
         cover: handleCategoryCover,
-        public: handle_category_public,
+        public: handleCategoryPublic,
         personal: handle_category_personal,
         music: handle_category_music,
     },
@@ -236,22 +236,22 @@ async function handleCategoryCover(method, token, parameters, request, response)
     }
 }
 
-async function handle_category_public(method, session, parameters, request, response) {
-    const validMethods = ['HEAD', 'GET'];
-    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (session !== null) {
-        const categories = await connection.getAllPublicCategories();
-        if (categories === null) { bodylessResponse(internalServerError, response); return; }
-        else {
-            if (method === 'GET') { bodyResponse(OK, JSON.stringify(categories), response); return; }
-            else { bodylessResponse(OK, JSON.stringify(categories), response); return; }
-        }
-    } else { bodylessResponse(unauthorized, response); }
+async function handleCategoryPublic(method, token, parameters, request, response) {
+    let api_response;
+    switch (method) {
+        case 'HEAD': case 'GET':
+            api_response = await API.getPublicCategories(token);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
 }
 
-async function handle_category_personal(method, session, parameters, request, response) {
-    const validMethods = ['HEAD', 'GET', 'POST', 'DELETE'];
+async function handle_category_personal(method, token, parameters, request, response) {
+    `const validMethods = ['HEAD', 'GET', 'POST', 'DELETE'];
     if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
     
     if (session !== null) {
@@ -286,7 +286,27 @@ async function handle_category_personal(method, session, parameters, request, re
             default:
                 bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
         }
-    } else { bodylessResponse(unauthorized, response); }
+    } else { bodylessResponse(unauthorized, response); }`
+    let api_response;
+    const category_id = newInt(parameters['id']);
+    switch (method) {
+        case 'HEAD': case 'GET':
+            api_response = await API.getPersonalCategories(token);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            break;
+        case 'POST':
+            if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
+            api_response = await API.addPersonalCategory(token, category_id); // TODO
+            break;
+        case 'DELETE':
+            if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
+            api_response = await API.deletePersonalCategory(token, category_id); // TODO
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
 }
 
 async function handle_category_music(method, session, parameters, request, response) {
