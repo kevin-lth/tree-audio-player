@@ -227,6 +227,9 @@ export function getAPI() {
         else {
             const session = check_session.response;
             if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            const done = await connection.grantCategoryAccess(category_id, session.account_id);
+            if (!done) { return newAPIResponse(null, badRequest); }
+            else { return newAPIResponse(null, OK); }
         }
     }
     
@@ -241,11 +244,15 @@ export function getAPI() {
         }
     }
     
+    // Revoking the personal access only does something if the account is not the owner of the category : this method won't fail even in this case.
     async function revokePersonalCategory(token, category_id) {
         const check_session = await __checkSession(token);
         if (check_session.response === null) { return check_session; }
         else {
-            const session = check_session.response; // TODO
+            const session = check_session.response;
+            const done = await connection.revokeCategoryAccess(category_id, session.account_id); // We won't check for access : the DELETE won't do anything if you don't have access anyway
+            if (!done) { return newAPIResponse(null, badRequest); }
+            else { return newAPIResponse(null, OK); }
         }
     }
     

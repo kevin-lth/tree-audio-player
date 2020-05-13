@@ -298,11 +298,13 @@ async function handle_category_personal(method, token, parameters, request, resp
             break;
         case 'POST':
             if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
-            api_response = await API.addPersonalCategory(token, category_id); // TODO
+            api_response = await API.addPersonalCategory(token, category_id);
+            bodylessResponse(api_response.http_code, '', response);
             break;
         case 'DELETE':
             if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
-            api_response = await API.deletePersonalCategory(token, category_id); // TODO
+            api_response = await API.revokePersonalCategory(token, category_id);
+            bodylessResponse(api_response.http_code, '', response);
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
