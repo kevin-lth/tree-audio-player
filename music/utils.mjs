@@ -213,7 +213,7 @@ async function __promise__getRequestBody(request) {
                 else { return data['rawData'][file]['value']; }
             }
             
-            function __getTempURL(url) { return `${temp_dir}/${url}` }
+            function __getTempURL(url) { return `${temp_dir}/tree_audio_player_${url}` }
             
             async function deleteAllTemporaryFiles() {
                 const keys = Object.keys(data['rawData']);
@@ -235,7 +235,6 @@ async function __promise__getRequestBody(request) {
             });
             busboy.on('file', (fieldname, stream, filename, encoding, mime_type) => {
                 const temp_name = crypto.randomBytes(16).toString('hex');
-                console.log(__getTempURL(temp_name));
                 // We will save the file in a temporary directory. We ignore the filename for security reasons.
                 let file = fs.createWriteStream(__getTempURL(temp_name));
                 stream.pipe(file);
