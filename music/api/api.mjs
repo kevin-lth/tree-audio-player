@@ -256,7 +256,19 @@ export function getAPI() {
         }
     }
     
-    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory };
+    async function getAllCategoryMusics(token, category_id, include_all_children = false) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            const musics = await connection.getAllMusics(category_id, include_all_children);
+            if (musics === null) { return newAPIResponse(null, badRequest); }
+            else { return newAPIResponse(musics, OK); }
+        }
+    }
+    
+    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics };
 
 }
 

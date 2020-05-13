@@ -26,7 +26,7 @@ let routes = {
         cover: handleCategoryCover,
         public: handleCategoryPublic,
         personal: handleCategoryPersonal,
-        music: handle_category_music,
+        music: handleCategoryMusic,
     },
     music: {
         resource: handle_music_resource,
@@ -275,21 +275,21 @@ async function handleCategoryPersonal(method, token, parameters, request, respon
     }
 }
 
-async function handle_category_music(method, session, parameters, request, response) {
-    const validMethods = ['HEAD', 'GET'];
-    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (session !== null) {
-        if (parameters['include_all_children'] === undefined) { parameters['include_all_children'] = false; }
-        const category_id = newInt(parameters['id']), include_all_children = newBoolean(parameters['include_all_children']);
-        if (category_id === null || include_all_children == null) { bodylessResponse(badRequest, response); return; }
-        const musics = await connection.getAllMusics(category_id, include_all_children);
-        if (musics === null) { bodylessResponse(internalServerError, response); return; }
-        else {
-            if (method === 'GET') { bodyResponse(OK, JSON.stringify(musics), response); return; }
-            else { bodylessResponse(OK, JSON.stringify(musics), response); return; }
-        }
-    } else { bodylessResponse(unauthorized, response); }
+async function handleCategoryMusic(method, token, parameters, request, response) {
+    let api_response;
+    switch (method) {
+        case 'HEAD': case 'GET':
+            if (parameters['include_all_children'] === undefined) { parameters['include_all_children'] = false; }
+            const category_id = newInt(parameters['id']), include_all_children = newBoolean(parameters['include_all_children']);
+            
+            api_response = await API.getAllCategoryMusics(token, category_id, include_all_children);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
 }
 
 async function handle_music_resource(method, session, parameters, request, response) {

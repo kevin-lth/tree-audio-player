@@ -590,10 +590,10 @@ export async function newConnection() {
                 if (result === undefined) { return null; }
                 const musics = [];
                 for (let i = 0; i < result.length; i++) {
-                    const music = result[i];
-                    const tags = await __getMusicTags(music['music_id']);
+                    const music_id = result[i]['music_id'];
+                    const tags = await __getMusicTags(music_id);
                     const formats = Object.keys(await getMusicFormatsAndURLs(music_id));
-                    musics.push(__getMusicObjectFromResult(music, tags, formats));
+                    musics.push(__getMusicObjectFromResult(result[i], tags, formats));
                 }
                 return musics;
             } catch (error) {
