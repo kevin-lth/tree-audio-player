@@ -1,4 +1,4 @@
-const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonWebCharacters = /^[\w|\h|\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;;
+const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonWebCharacters = /^[\w| |\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~|'|`]+$/;
 const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, rangeMaxLength = 50;
 const validAuthorizationMethod = ['Bearer'];
 

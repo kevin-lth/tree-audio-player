@@ -1,6 +1,6 @@
 import { newInt, newBoolean } from '../utils.mjs';
 
-const alphanumeric = /^\w+$/, alphanumericAndNonWebCharacters = /^[\w| |\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~]+$/;
+const alphanumeric = /^\w+$/, alphanumericAndNonWebCharacters = /^[\w| |\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~|'|`]+$/;
 
 export function newAccount(username, password) {
     if ((username !== undefined && username !== null && username.match(alphanumeric) && username.length <= 16) 
