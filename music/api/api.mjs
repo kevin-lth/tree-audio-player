@@ -267,8 +267,71 @@ export function getAPI() {
             else { return newAPIResponse(musics, OK); }
         }
     }
+    async function addMusic(token, id_less_music) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            if (!(await connection.checkCategoryOwnership(id_less_music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            const music_id = await connection.createMusic(id_less_music, session.account_id);
+            if (music_id === -1) { return newAPIResponse(null, badRequest); }
+            else { return newAPIResponse({ id : music_id }, OK); }
+        }
+    }
+
+    async function getMusic(token, music_id) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            // This is awkward : to check if we have access to the music, we have to check the category... and to do that, we need to get the music itself. 
+            const music = await connection.getMusic(music_id);
+            if (music === null) { return newAPIResponse(null, notFound); }
+            else { 
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                else { return newAPIResponse(music, OK); }
+            }
+        }
+    }
     
-    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics };
+    async function updateMusic(token, music_id, id_less_updated_music) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            const previous_music = await connection.getMusic(music_id);
+            if (previous_music === null) { return newAPIResponse(null, badRequest); }
+            if (!(await connection.checkCategoryOwnership(previous_music.category_id, session.account_id)) ||
+                !(await connection.checkCategoryOwnership(id_less_updated_music.category_id, session.account_id))) 
+                    { return newAPIResponse(null, unauthorized); }
+            const updated = await connection.updateMusic(music_id, id_less_updated_music);
+            if (!updated) { // This should not occur unless something is wrong with the database
+                console.log('[API] Problem encountered when updating a music : the music exists, but its update failed. However, the updated values were checked beforehand... Please check the database for any issues.');
+                return newAPIResponse(null, badRequest);
+            }
+            else { return newAPIResponse(null, OK); }
+        }
+    }
+    
+    async function deleteMusic(token, music_id) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            const music = await connection.getMusic(music_id);
+            if (music === null) { return newAPIResponse(null, notFound); }
+            else { 
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                else {
+                    const done = await connection.deleteMusic(music_id);
+                    if (!done) { return newAPIResponse(null, badRequest); }
+                    else { return newAPIResponse(null, OK); }
+                }
+            }
+        }
+    }
+    
+    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics, addMusic, getMusic, updateMusic, deleteMusic };
 
 }
 

@@ -181,7 +181,7 @@ export async function newConnection() {
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id);`),
                 createMusic: await db.prepare('INSERT INTO music (full_name, category_id, track) VALUES ($full_name, $category_id, $track);'),
                 getMusic: await db.prepare('SELECT music_id, full_name, category_id, track FROM music WHERE music_id=$music_id;'),
-                updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, track=$track WHERE music_id=$music_id;'),
+                updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, category_id=$category_id, track=$track WHERE music_id=$music_id;'),
                 deleteMusic: await db.prepare('DELETE FROM music WHERE music_id = $music_id;'),
                 createTag: await db.prepare('INSERT INTO tag (tag_name) VALUES ($tag_name);'),
                 getTagFromName: await db.prepare('SELECT tag_id, tag_name FROM tag WHERE tag_name=$tag_name;'),
@@ -660,11 +660,11 @@ export async function newConnection() {
         
         async function updateMusic(music_id, updated_music) {
             try {
-                await statements.updateMusic.run({ $music_id: music_id, $full_name: updated_music.full_name, $track: updated_music.track }); // We voluntarily ignore the category.
+                await statements.updateMusic.run({ $music_id: music_id, $full_name: updated_music.full_name, $category_id: updated_music.category_id, $track: updated_music.track });
                 await __setMusicTags(music_id, updated_music.tags);
                 return true;
             } catch (error) {
-                console.log(`[Database] updateMusic failed ! music_id = ${music_id}, updated_full_name = ${updated_music.full_name}, updated_track = ${updated_music.track}, tags = ${updated_music.tags}, error = ${error}`);
+                console.log(`[Database] updateMusic failed ! music_id = ${music_id}, updated_full_name = ${updated_music.full_name}, updated_category_id = ${updated_music.category_id}, updated_track = ${updated_music.track}, tags = ${updated_music.tags}, error = ${error}`);
                 return false;
             }
         }

@@ -292,65 +292,46 @@ async function handleCategoryMusic(method, token, parameters, request, response)
     }
 }
 
-async function handle_music_resource(method, session, parameters, request, response) {
-    const validMethods = ['HEAD', 'GET', 'POST', 'PUT', 'DELETE'];
-    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (session !== null) {
-        let done;
-        let music_id = newInt(parameters['id']); // Can't be a constant in the case of POST
-        let music = null;
-        let category_id = null;
-        switch (method) {
-            case 'HEAD': case 'GET':
-                if (music_id === null) { bodylessResponse(badRequest, response); return; }
-                music = await connection.getMusic(music_id);
-                if (music === null) { bodylessResponse(badRequest, response); return; }
-                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
-
-                if (method === 'GET') { bodyResponse(OK, JSON.stringify(music), response); }
-                else { bodylessResponse(OK, JSON.stringify(music), response) } // Has to be HEAD
-                break;
-            case 'PUT':
-                if (music_id === null) { bodylessResponse(badRequest, response); return; }
-                music = await connection.getMusic(music_id);
-                if (music === null) { bodylessResponse(badRequest, response); return; }
-                category_id = music.category_id;
-            case 'POST': 
-                let data = await getRequestBody(request);
-                if (data === null) { bodylessResponse(badRequest, response); return; }
-                
-                if (category_id === null) { category_id = data.getFieldValue('category_id'); }
-                if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
-                let tags = [];
-                try {
-                    tags = JSON.parse(data.getFieldValue('tags'));
-                } catch (error) { bodylessResponse(badRequest, response); return; }
-                let updated_music = newIDlessMusic(data.getFieldValue('full_name'), category_id, data.getFieldValue('track'), tags);
-                if (updated_music === null) { bodylessResponse(badRequest, response); return; }
-                
-                if (method === 'POST') {
-                    music_id = await connection.createMusic(updated_music);
-                    done = music_id !== -1;
-                }
-                else { done = await connection.updateMusic(music_id, updated_music); }
-                
-                if (done) { bodylessResponse(OK, response); return; }
-                else { bodylessResponse(internalServerError, response); return; }
-                break;
-            case 'DELETE':
-                if (music_id === null) { bodylessResponse(badRequest, response); return; }
-                music = await connection.getMusic(music_id);
-                if (music === null) { bodylessResponse(badRequest, response); return; }
-                if (!(await connection.checkCategoryOwnership(music.category_id, session.account_id))) { bodylessResponse(unauthorized, response); return; }
-                done = await connection.deleteMusic(music_id);
-                if (done) { bodylessResponse(OK, response); return; }
-                else { bodylessResponse(internalServerError, response); return; }
-                break;
-            default:
-                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
-        }
-    } else { bodylessResponse(unauthorized, response); }
+async function handle_music_resource(method, token, parameters, request, response) {
+    let api_response;
+    const music_id = newInt(parameters['id']); // It is used for every method except POST, so we factorize it here
+    switch (method) {
+        case 'HEAD': case 'GET':
+            if (music_id === null) { bodylessResponse(badRequest, '', response); return; }
+            
+            api_response = await API.getMusic(token, music_id);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            break;
+        case 'POST': case 'PUT':
+            const data = await getRequestBody(request);
+            if (data === null) { bodylessResponse(badRequest, '', response); return; }
+            let tags = [];
+            try {
+                const tags_value = data.getFieldValue('tags');
+                if (tags_value !== null) { tags = JSON.parse(tags_value); }
+            } catch (error) { console.log(error); bodylessResponse(badRequest, '', response); return; }
+            const id_less_music = newIDlessMusic(data.getFieldValue('full_name'), data.getFieldValue('category_id'), data.getFieldValue('track'), tags);
+            if (id_less_music === null) { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; }
+            
+            if (method === 'POST') { api_response = await API.addMusic(token, id_less_music); }
+            else if (music_id !== null) { api_response = await API.updateMusic(token, music_id, id_less_music); }
+            else { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; } // Method is PUT, but music_id is invalid
+            
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'POST') { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); } // We need to send back the new music's ID
+            else { bodylessResponse(api.response.http_code, '', response); }
+            await data.deleteAllTemporaryFiles();
+            break;
+        case 'DELETE':
+            if (music_id === null) { bodylessResponse(badRequest, '', response); return; }
+            api_response = await API.deleteMusic(token, music_id);
+            bodylessResponse(api_response.http_code, '', response);
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
 }
 
 async function handle_music_file(method, session, parameters, request, response) {
