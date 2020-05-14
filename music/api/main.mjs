@@ -4,7 +4,7 @@ import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, ne
     bodylessResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newIDlessMusic } from '../common/models.mjs';
 
-const Ok = 200, badRequest = 400, notFound = 404;
+const Ok = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
 const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*,application/octet-stream');
@@ -32,11 +32,11 @@ let routes = {
 
 let API = getAPI();
 
-// Deal with a request.
-export async function handle(url, request, response) {   
+// Deals with a request.
+export async function handle(url, request, response) {
     const acceptTypes = newAcceptHeader(request.headers['accept']);
     if (acceptTypes === null) { bodylessResponse(badRequest, '', response); return; }
-    else if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) { bodylessResponse(notAcceptable, '', response); return; } // We check for every
+    else if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) { bodylessResponse(notAcceptable, '', response); return; }
     // Except for 2 specific requests, we will send JSON in the body
     response.setHeader('Content-Type', 'application/json');
         

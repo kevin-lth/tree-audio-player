@@ -1,14 +1,19 @@
 import * as HTTP from 'http';
 
-import { newURL } from './utils.mjs';
+import { newURL, bodylessResponse, bodyResponse } from './utils.mjs';
 import { testAll } from './tests.mjs';
-import * as api from './api/main.mjs'
 
-const OK = 200, badRequest = 400, forbidden = 403, notFound = 404;
+import * as html from './html/main.mjs';
+import * as assets from './assets/main.mjs';
+import * as api from './api/main.mjs';
+
+const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;
 
 // Deal with a request.
 export async function handle(request, response) {
     // Before anything, we check the URL to see if we should pass the request somewhere else.
+    // TODO: Set mandatory headers
+    
     let url = newURL(request.url);
     if (url === null) { 
         console.log("[Request (Music)] Invalid URL:", request.url);
@@ -23,35 +28,20 @@ export async function handle(request, response) {
     console.log("[Request (Music)] Headers:", request.headers);
     
     switch (url.paths[0]) {
-        case '':
-            // We know from URL validation that this HAS to be the last fragment of the URL if it is empty
-            // In other words, the URL has to be '/'
-            ok(response);
+        case '': // This is the root
+            await html.handle(url, request, response);
             break;
-        case 'api':
-            // We redirect the request to the API
+        case 'assets':
             url.shift();
-            await api.handle(url, request, response);
+            await assets.handle(url, request, response);
+        case 'api':
+            url.shift();
+            await api.handle(url, request, response); // We redirect the request to the API
             break;
         default:
-            error(notFound, response);
-            return; // No break, as it is unaccessible anyway
+            response.setHeader('Content-Type', 'text/plain');
+            bodylessResponse(notFound, '', response);
     }
-}
-
-function error(errorCode, response) {
-    let hdrs = { 'Content-Type': 'text/plain' };
-    response.writeHead(errorCode, hdrs);
-    response.write("Error " + errorCode);
-    response.end();
-}
-
-// Send a reply.
-function ok(response) {
-    let hdrs = { 'Content-Type': 'text/plain' };
-    response.writeHead(200, hdrs);  // 200 = OK
-    response.write("OK");
-    response.end();
 }
 
 testAll();
