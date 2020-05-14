@@ -1,17 +1,13 @@
 import { getAPI } from './api.mjs';
-import { getAudioFormats, getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile } from './file.mjs';
 
 import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader, newInt, newBoolean, 
     bodylessResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
-import { newAccount, newIDlessCategory, newCategory, newIDlessMusic, newMusic } from '../common/models.mjs';
+import { newAccount, newIDlessCategory, newIDlessMusic } from '../common/models.mjs';
 
-const OK = 200, accepted = 202, partialContent = 206, unauthorized = 401, forbidden = 403, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
-const badRequest = 400, notFound = 404;
+const Ok = 200, badRequest = 400, notFound = 404;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
 const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*,application/octet-stream');
-
-const default_audio_format = 'ogg|opus-96';
 
 let routes = {
     account: {
@@ -29,8 +25,8 @@ let routes = {
         music: handleCategoryMusic,
     },
     music: {
-        resource: handle_music_resource,
-        file: handle_music_file,
+        resource: handleMusicResource,
+        file: handleMusicFile,
     }
 };
 
@@ -38,11 +34,9 @@ let API = getAPI();
 
 // Deal with a request.
 export async function handle(url, request, response) {   
-    let acceptTypes = newAcceptHeader(request.headers['accept']);
+    const acceptTypes = newAcceptHeader(request.headers['accept']);
     if (acceptTypes === null) { bodylessResponse(badRequest, '', response); return; }
-    else if (!(acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' }) 
-        && acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: '*' })
-        && acceptTypes.isAccepted({ mimeType: 'audio', mimeSubtype: '*' }) )) { bodylessResponse(notAcceptable, '', response); return; }
+    else if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) { bodylessResponse(notAcceptable, '', response); return; } // We check for every
     // Except for 2 specific requests, we will send JSON in the body
     response.setHeader('Content-Type', 'application/json');
         
@@ -214,6 +208,8 @@ async function handleCategoryCover(method, token, parameters, request, response)
     if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
     switch (method) {
         case 'HEAD': case 'GET':
+            const acceptTypes = newAcceptHeader(request.headers['accept']);
+            if (!acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: 'png' })) { bodylessResponse(notAcceptable, '', response); return; }
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
             api_response = await API.getCategoryCover(token, category_id, range);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
@@ -292,7 +288,7 @@ async function handleCategoryMusic(method, token, parameters, request, response)
     }
 }
 
-async function handle_music_resource(method, token, parameters, request, response) {
+async function handleMusicResource(method, token, parameters, request, response) {
     let api_response;
     const music_id = newInt(parameters['id']); // It is used for every method except POST, so we factorize it here
     switch (method) {
@@ -334,55 +330,34 @@ async function handle_music_resource(method, token, parameters, request, respons
     }
 }
 
-async function handle_music_file(method, session, parameters, request, response) {
-    const validMethods = ['HEAD', 'GET', 'POST'];
-    if (validMethods.indexOf(method) === -1) { bodylessResponse(methodNotAllowed, response); return; }
-    
-    if (session !== null) {
-        const music_id = newInt(parameters['id']);
-        if (music_id === null) { bodylessResponse(badRequest, response); return; }
-        switch (method) {
-            case 'HEAD': case 'GET':
-                let format = parameters['format'];
-                if (format === undefined) { format = default_audio_format; }
-                const range = newRangeHeader(request.headers['range']);
-                const formats_and_urls = await connection.getMusicFormatsAndURLs(music_id);
-                if (formats_and_urls === null) { bodylessResponse(notFound, response); return; }
-                const url = formats_and_urls[format];
-                if (url === undefined || url === null) { bodylessResponse(notFound, response); return; }
-                const file = await getMusicFile(url, range, format);
-                
-                if (file === null) { bodylessResponse(notFound, response); return; }
-                let status_code;
-                if (file.partial) { status_code = partialContent; }
-                else { status_code = OK; }
-                if (method === 'GET') { bodyStreamResponse(status_code, file, request, response); }
-                else { bodylessStreamResponse(status_code, file, response); }
-                break;
-            case 'POST':
-                const data = await getRequestBody(request);
-                if (data === null) { bodylessResponse(badRequest, response); return; }
-                const file_data = data.rawData['file'];
-                if (file_data === undefined || file_data === null || !accept_audio.isAccepted(newMimeType(file_data['mime_type']))) { 
-                    bodylessResponse(badRequest, response); await deleteTempFile(data.getFileName('file')); return;
-                }
-                // The processing takes a while... we will answer the client immediately.
-                bodylessResponse(accepted, response);
-                
-                const result = await processMusicFile(data.getFileName('file'));
-                if (result === null) { await deleteTempFile(data.getFileName('file')); return; } // No response necessary
-                
-                const keys = Object.keys(result);
-                for (let i = 0; i < keys.length; i++) {
-                    await connection.removeMusicFormat(music_id, keys[i]);
-                    await connection.addMusicFormatAndURL(music_id, keys[i], result[keys[i]]);
-                }
-                // We delete the temporary file regardless of the outcome.
-                await deleteTempFile(data.getFileName('file'));
-                break;
-            default:
-                bodylessResponse(internalServerError, response); return; // Should not happen. Just in case...
-        }
-    } else { bodylessResponse(unauthorized, response); }
+async function handleMusicFile(method, token, parameters, request, response) {
+    let api_response;
+    const music_id = newInt(parameters['id']); // We use the ID for every method, so we might as well do the check here.
+    if (music_id === null) { bodylessResponse(badRequest, '', response); return; }
+    switch (method) {
+        case 'HEAD': case 'GET':
+            const acceptTypes = newAcceptHeader(request.headers['accept']);
+            if (!acceptTypes.isAccepted({ mimeType: 'audio', mimeSubtype: '*' })) { bodylessResponse(notAcceptable, '', response); return; }
+            const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
+            const format = parameters['format']; // If there is no value, it will be undefined - the API will pick the default format if this is the case
+            api_response = await API.getMusicFile(token, music_id, format, range);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
+            else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
+            break;
+        case 'POST':
+            const data = await getRequestBody(request);
+            if (data === null) { bodylessResponse(badRequest, response); return; }
+            const music_file = data.getFileName('file');
+            if (music_file === null || !accept_audio.isAccepted(newMimeType(data['rawData']['file']['mime_type']))) 
+                { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; }
+            function execute_before_processing(temporary_api_response) { bodylessResponse(temporary_api_response.http_code, '', response); }
+            
+            api_response = await API.setMusicFile(token, music_id, music_file, execute_before_processing);
+            await data.deleteAllTemporaryFiles();
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
 }
 

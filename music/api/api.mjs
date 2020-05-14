@@ -1,10 +1,10 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFile, processMusicFile } from './file.mjs';
+import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFileWithFormat, processMusicFile } from './file.mjs';
 
 const OK = 200, accepted = 202, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
-const default_audio_format = 'ogg|opus-96';
+const default_music_format = 'ogg|opus-96';
 
 function newAPIResponse(response, http_code) {
     return { response, http_code }
@@ -331,7 +331,66 @@ export function getAPI() {
         }
     }
     
-    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics, addMusic, getMusic, updateMusic, deleteMusic };
+    async function getMusicFile(token, music_id, format = null, range = null) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            if (format === undefined || format === null) { format = default_music_format; }
+            const music = await connection.getMusic(music_id);
+            if (music === null) { return newAPIResponse(null, notFound); }
+            else { 
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                const formats_and_urls = await connection.getMusicFormatsAndURLs(music_id);
+                if (formats_and_urls === null) { return newAPIResponse(null, notFound); }
+                const file_url = formats_and_urls[format];
+                if (file_url === undefined || file_url === null) { return newAPIResponse(null, notFound); }
+                let file = await getMusicFileWithFormat(file_url, range, format);
+                if (file === null) { // The URL is known by the database but the file doesn't exist : there was most likely outside tampering.
+                    console.log('[API] Problem encountered when getting a music file : the URL is known by the database but the corresponding file doesn\'t exist. This should not occur, please check both the database and your file system for any issues.');
+                    return newAPIResponse(null, internalServerError);
+                } else {
+                    let status_code = OK;
+                    if (file.partial) { status_code = partialContent; }
+                    return newAPIResponse(file, status_code);
+                }
+            } 
+        }
+    }
+    
+    async function setMusicFile(token, music_id, temporary_url, execute_before_processing = (temporary_api_response) => {}) { // This function allows us to handle cases where a response cannot wait: for instance, in the case of an HTTP response.
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            const music = await connection.getMusic(music_id);
+            if (music === null) { return newAPIResponse(null, notFound); }
+            else { 
+                if (!(await connection.checkCategoryOwnership(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                const temporary_api_response = newAPIResponse(null, accepted);
+                execute_before_processing(temporary_api_response);
+                const file_urls = await processMusicFile(temporary_url);
+                if (file_urls === null) { return newAPIResponse(null, internalServerError); }
+                else {
+                    const keys = Object.keys(file_urls);
+                    for (let i = 0; i < keys.length; i++) {
+                        let done = await connection.removeMusicFormat(music_id, keys[i]);
+                        if (done) { done = await connection.addMusicFormatAndURL(music_id, keys[i], file_urls[keys[i]]); }
+                        if (!done) { return newAPIResponse(null, internalServerError); }
+                    }
+                    return newAPIResponse(null, OK);
+                }
+
+            }
+        }
+    }
+    
+    // This function should not be called directly. It is intended to be executed after the API : no checks will be done here.
+    async function __processMusicFile(music_id, temporary_url) {
+
+    }
+    
+    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics, addMusic, getMusic, updateMusic, deleteMusic, getMusicFile, setMusicFile };
 
 }
 
