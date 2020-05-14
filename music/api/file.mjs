@@ -1,21 +1,22 @@
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 import easyimage from 'easyimage';
 import ffmpeg from 'fluent-ffmpeg';
 
-const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = './temp/';
+const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir();
 
 // You might need to change your values for your own installation
 const audio_formats = {
     'mp3-128': { internal_name: 'mp3-128', mime_type: "audio/mpeg", codec: 'libmp3lame', bitrate: 128, extension: 'mp3' },
-    'ogg|opus-96': { internal_name: 'ogg|opus-96', mime_type: "audio/ogg", codec: 'libopus', bitrate: 96, extension: 'ogg' },
+    'ogg|opus-96': { internal_name: 'ogg|opus-96', mime_type: "audio/x-opus+ogg", codec: 'libopus', bitrate: 96, extension: 'ogg' },
 };
 
 export function getAudioFormats() { return audio_formats; }
 
 function __getCoverURL(cover_url) { return cover_dir + `${cover_url}.png`; }
 function __getMusicURL(music_url, format) { return music_dir + `${music_url}.${format.extension}`; }
-function __getTempURL(temp_url) { return temp_dir + temp_url; }
+function __getTempURL(url) { return `${temp_dir}/tree_audio_player_${url}` }
 
 async function __getStream(path, mime_type, range = null) {
     try {
@@ -88,7 +89,7 @@ export async function processCategoryCover(file_name) {
     }
 }
 
-export async function getMusicFile(file_url, range, format) {
+export async function getMusicFileWithFormat(file_url, range, format) { // Odd name as a fix for clashing with the API
     if (audio_formats[format] === undefined) { return null; }
     try {
         const format_info = audio_formats[format];
@@ -114,15 +115,6 @@ export async function processMusicFile(file_name) {
     } catch (error) {
         console.log(`[File] processMusicFile failed ! file_name = ${file_name}, error = ${error}. Ignoring file sent by client.`);
         return null;
-    }
-}
-
-export async function deleteTempFile(temp_name) {
-    try {
-        return await fs.promises.unlink(__getTempURL(temp_name));
-    } catch (error) {
-        console.log(`[File] deleteTempFile failed ! temp_name = ${temp_name}, error = ${error}.`);
-        return false;
     }
 }
 

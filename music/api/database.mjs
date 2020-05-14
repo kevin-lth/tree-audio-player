@@ -113,31 +113,36 @@ export async function newConnection() {
                 deleteSession: await db.prepare('DELETE FROM session WHERE session_id=$session_id;'),
                 createCategory: await db.prepare('INSERT INTO category (full_name, short_name, is_public, creator_id) VALUES ($full_name, $short_name, $is_public, $creator_id);'),
                 createZeroCategoryLink: await db.prepare('INSERT INTO category_links (parent_category_id, child_category_id, depth) VALUES ($category_id, $category_id, 0)'),
-                getCategory: await db.prepare('SELECT category_id, full_name, short_name, is_public, creator_id FROM category WHERE category_id = $category_id;'),
+                getCategory: await db.prepare(
+                    `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
+                        WHERE category.creator_id=account.account_id AND category_id=$category_id;`),
                 getParentCategory: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, category.cover_url FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account
                         INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
-                        WHERE category_links.child_category_id = $category_id AND category_links.depth = 1;`),
+                        WHERE category.creator_id=account.account_id AND category_links.child_category_id = $category_id AND category_links.depth = 1;`),
                 checkParentCategory: await db.prepare(
                     `SELECT COUNT(1) AS checkCount FROM category 
                         INNER JOIN category_links ON category.category_id = category_links.parent_category_id 
                         WHERE category_links.child_category_id = $category_id AND category_links.depth = 1;`),
                 getAllCategoryChildren: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category_links.parent_category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
+                        WHERE category.creator_id=account.account_id AND category_links.parent_category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
                 getAllCategoryDirectChildren: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category_links.parent_category_id = $category_id AND category_links.depth = 1;`),
+                        WHERE category.creator_id=account.account_id AND category_links.parent_category_id = $category_id AND category_links.depth = 1;`),
                 getCategorySymlinks: await db.prepare(
-                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id FROM category 
+                    `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.category_id = $category_id AND category_links.depth = -1;`),
-                getAllPublicCategories: await db.prepare(`SELECT category_id, full_name, short_name, is_public, creator_id FROM category WHERE is_public=1;`),
+                        WHERE category.creator_id=account.account_id AND category.category_id = $category_id AND category_links.depth = -1;`),
+                getAllPublicCategories: await db.prepare(
+                    `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
+                        WHERE category.creator_id=account.account_id AND is_public=1;`),
                 getAllPersonalCategories: await db.prepare(
-                    `SELECT category_id, full_name, short_name, is_public, creator_id, cover_url FROM category WHERE creator_id=$account_id 
-                        OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id);`),
+                    `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
+                        WHERE category.creator_id=account.account_id AND (creator_id=$account_id 
+                            OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id));`),
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id=$category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
                 setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id=$category_id;'),
@@ -176,7 +181,7 @@ export async function newConnection() {
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id);`),
                 createMusic: await db.prepare('INSERT INTO music (full_name, category_id, track) VALUES ($full_name, $category_id, $track);'),
                 getMusic: await db.prepare('SELECT music_id, full_name, category_id, track FROM music WHERE music_id=$music_id;'),
-                updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, track=$track WHERE music_id=$music_id;'),
+                updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, category_id=$category_id, track=$track WHERE music_id=$music_id;'),
                 deleteMusic: await db.prepare('DELETE FROM music WHERE music_id = $music_id;'),
                 createTag: await db.prepare('INSERT INTO tag (tag_name) VALUES ($tag_name);'),
                 getTagFromName: await db.prepare('SELECT tag_id, tag_name FROM tag WHERE tag_name=$tag_name;'),
@@ -211,7 +216,7 @@ export async function newConnection() {
         async function createAccount(account) {
             // We assume that account is using the power class defined earlier, and so we don't have to do sanity checks again.
             // The salt is stored inside the string, so we don't have to worry about storing it ourselves
-            const hashed_password = await bcrypt.hash(account.password, 12);
+            const hashed_password = await bcrypt.hash(account.password, 11);
             try {
                 await statements.createAccount.run({ $username: account.username, $hashed_password: hashed_password });
                 return await getLastID();
@@ -236,10 +241,8 @@ export async function newConnection() {
         async function checkAccountCredentials(account) {
             try {
                 const db_account = await statements.getAccountFromUsername.get({ $username: account.username });
-                const known_username = db_account !== undefined;
-                // The reason we don't return immediately false is to prevent hackers from determining what account actually exists by bruteforcing a lot of usernames. Checking the hashes allows to have a similar timing whether or not the username exists or not, at the cost of speed in some situations.
-                const check = await bcrypt.compare(account.password, db_account.hashed_password);
-                if (known_username && check) { return db_account.account_id; } 
+                if (db_account !== undefined) { return -1 }
+                if (await bcrypt.compare(account.password, db_account.hashed_password)) { return db_account.account_id; } 
                 else { return -1; }
             } catch (error) {
                 console.log(`[Database] checkAccountCredentials failed ! username = ${account.username}, error = ${error}`);
@@ -314,12 +317,12 @@ export async function newConnection() {
         
         // Util function
         function __getCategoryObjectFromResult(category_result, children) {
-            return newCategory(category_result.category_id, category_result.full_name, category_result.short_name, category_result.is_public === 1, category_result.creator_id, children);
+            return newCategory(category_result.category_id, category_result.full_name, category_result.short_name, category_result.is_public === 1, category_result.creator, children);
         }
         
-        async function createCategory(category) {
+        async function createCategory(category, account_id) {
             try {
-                await statements.createCategory.run({ $full_name: category.full_name, $short_name: category.short_name, $is_public: category.is_public, $creator_id: category.creator_id });
+                await statements.createCategory.run({ $full_name: category.full_name, $short_name: category.short_name, $is_public: category.is_public, $creator_id: account_id });
                 const category_id = await getLastID();
                 await statements.createZeroCategoryLink.run({ $category_id: category_id });
                 return category_id;
@@ -329,7 +332,7 @@ export async function newConnection() {
             }
         }
         
-        async function getCategory(category_id, include_children = false, only_direct_children = true) {
+        async function getCategory(category_id, include_children, only_direct_children) {
             try {
                 const category = await statements.getCategory.get({ $category_id: category_id });
                 if (category === undefined) { return null; }
@@ -390,8 +393,11 @@ export async function newConnection() {
         async function getCategoryCoverURL(category_id) {
             try {
                 const result = await statements.getCategoryCoverURL.get({ $category_id: category_id });
-                if (result === undefined) { return null; }
-                else { return result['cover_url']; }
+                if (result === undefined) { return null; } // The category doesn't exist
+                else {
+                    if (result['cover_url'] === null) { return undefined; } // The category exists and uses the default cover
+                    else { return result['cover_url']; }
+                }
             } catch (error) {
                 console.log(`[Database] getCategoryCoverURL failed ! category_id = ${category_id}, error = ${error}`);
                 return null;
@@ -420,8 +426,8 @@ export async function newConnection() {
                     return categories;
                 }
             } catch (error) {
-                console.log(`[Database] getAllPublicCategories failed ! category_id = ${category_id}, error = ${error}`);
-                return false;
+                console.log(`[Database] getAllPublicCategories failed ! error = ${error}`);
+                return null;
             }
         }
         
@@ -437,8 +443,8 @@ export async function newConnection() {
                     return categories;
                 }
             } catch (error) {
-                console.log(`[Database] getAllPublicCategories failed ! category_id = ${category_id}, error = ${error}`);
-                return false;
+                console.log(`[Database] getAllPublicCategories failed ! error = ${error}`);
+                return null;
             }
         }
         
@@ -576,7 +582,7 @@ export async function newConnection() {
             }
         }
         
-        async function getAllMusics(category_id, include_all_children = false) {
+        async function getAllMusics(category_id, include_all_children) {
             try {
                 let result;
                 if (include_all_children) { result = await statements.getAllMusicsFromCategoryAndChildren.all({ $category_id: category_id }); }
@@ -584,10 +590,10 @@ export async function newConnection() {
                 if (result === undefined) { return null; }
                 const musics = [];
                 for (let i = 0; i < result.length; i++) {
-                    const music = result[i];
-                    const tags = await __getMusicTags(music['music_id']);
+                    const music_id = result[i]['music_id'];
+                    const tags = await __getMusicTags(music_id);
                     const formats = Object.keys(await getMusicFormatsAndURLs(music_id));
-                    musics.push(__getMusicObjectFromResult(music, tags, formats));
+                    musics.push(__getMusicObjectFromResult(result[i], tags, formats));
                 }
                 return musics;
             } catch (error) {
@@ -654,11 +660,11 @@ export async function newConnection() {
         
         async function updateMusic(music_id, updated_music) {
             try {
-                await statements.updateMusic.run({ $music_id: music_id, $full_name: updated_music.full_name, $track: updated_music.track }); // We voluntarily ignore the category.
+                await statements.updateMusic.run({ $music_id: music_id, $full_name: updated_music.full_name, $category_id: updated_music.category_id, $track: updated_music.track });
                 await __setMusicTags(music_id, updated_music.tags);
                 return true;
             } catch (error) {
-                console.log(`[Database] updateMusic failed ! music_id = ${music_id}, updated_full_name = ${updated_music.full_name}, updated_track = ${updated_music.track}, tags = ${updated_music.tags}, error = ${error}`);
+                console.log(`[Database] updateMusic failed ! music_id = ${music_id}, updated_full_name = ${updated_music.full_name}, updated_category_id = ${updated_music.category_id}, updated_track = ${updated_music.track}, tags = ${updated_music.tags}, error = ${error}`);
                 return false;
             }
         }
@@ -708,6 +714,7 @@ export async function newConnection() {
         }
         
         return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic, addMusicFormatAndURL, getMusicFormatsAndURLs, removeMusicFormat };
+        
     } catch (error) {
         console.log(`[Database] Error when trying to initialize ! error = ${error}`);
         return { available: false};
