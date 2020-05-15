@@ -26,8 +26,8 @@ export async function handle(url, request, response) {
     const acceptTypes = newAcceptHeader(request.headers['accept']);
     if (acceptTypes === null) { bodylessResponse(badRequest, '', response); return; }
     // We use XHTML if we can, HTML otherwise
-    if (acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'xhtml+xml' })) { response.setHeader('Content-Type', 'application/xhtml+xml'); }
-    else if (acceptTypes.isAccepted({ mimeType: 'text', mimeSubtype: 'html' })) { response.setHeader('Content-Type', 'text/html'); }
+    if (acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'xhtml+xml' })) { response.setHeader('Content-Type', 'application/xhtml+xml; charset=utf-8'); }
+    else if (acceptTypes.isAccepted({ mimeType: 'text', mimeSubtype: 'html' })) { response.setHeader('Content-Type', 'text/html; charset=utf-8'); }
     else { bodylessResponse(notAcceptable, '', response); }
     
     const method = request.headers[':method'];

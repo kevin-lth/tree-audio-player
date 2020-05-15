@@ -38,7 +38,7 @@ export async function handle(url, request, response) {
     if (acceptTypes === null) { bodylessResponse(badRequest, '', response); return; }
     else if (!acceptTypes.isAccepted({ mimeType: 'application', mimeSubtype: 'json' })) { bodylessResponse(notAcceptable, '', response); return; }
     // Except for 2 specific requests, we will send JSON in the body
-    response.setHeader('Content-Type', 'application/json');
+    response.setHeader('Content-Type', 'application/json; charset=utf-8');
         
     const method = request.headers[':method'];
     const token = await getToken(request);

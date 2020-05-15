@@ -42,6 +42,7 @@ export async function handle(url, request, response) {
 async function streamAsset(asset, method, acceptTypes, request, response) {
     if (!acceptTypes.isAccepted(newMimeType(asset.mime_type))) { bodylessResponse(notAcceptable, '', response); }
     else {
+        response.setHeader('Cache-Control', 'public, max-age=86400'); // The max-age should be changed after all the assets are finished. It doesn't even matter right now as navigators usually won't cache anything from a server with self-signed certificates
         const stream = await getAsset(asset);
         if (stream === null) { bodylessResponse(internalServerError, '', response); }
         else if (method === 'HEAD') { bodylessStreamResponse(OK, stream, response); }
