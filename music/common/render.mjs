@@ -20,7 +20,7 @@ export function newRender(bindings) {
             </html>`
     }
 
-    console.log(renderPage('Coucou', 'Slt', 'Boy', 'Football'));
+    console.log(renderPage('Hello', 'Header', 'Body', 'Football'));
     return { renderPage };
 }
 
