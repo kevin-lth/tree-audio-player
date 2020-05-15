@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import easyimage from 'easyimage';
 import ffmpeg from 'fluent-ffmpeg';
 
-const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir();
+const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir(), assets_dir = './assets/';
 
 // You might need to change your values for your own installation
 const audio_formats = {
@@ -16,7 +16,8 @@ export function getAudioFormats() { return audio_formats; }
 
 function __getCoverURL(cover_url) { return cover_dir + `${cover_url}.png`; }
 function __getMusicURL(music_url, format) { return music_dir + `${music_url}.${format.extension}`; }
-function __getTempURL(url) { return `${temp_dir}/tree_audio_player_${url}` }
+function __getTempURL(temp_url) { return `${temp_dir}/tree_audio_player_${temp_url}` }
+function __getAssetURL(asset_url) { return assets_dir + asset_url; }
 
 async function __getStream(path, mime_type, range = null) {
     try {
@@ -114,6 +115,15 @@ export async function processMusicFile(file_name) {
         return result;
     } catch (error) {
         console.log(`[File] processMusicFile failed ! file_name = ${file_name}, error = ${error}. Ignoring file sent by client.`);
+        return null;
+    }
+}
+
+export async function getAsset(asset) {
+    try {
+        return await __getStream(__getAssetURL(asset.url), asset.mime_type);
+    } catch (error) {
+        console.log(`[File] getAsset failed ! asset = ${asset}, error = ${error}.`);
         return null;
     }
 }

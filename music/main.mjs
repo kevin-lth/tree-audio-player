@@ -13,11 +13,11 @@ const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcc
 export async function handle(request, response) {
     // Before anything, we check the URL to see if we should pass the request somewhere else.
     // TODO: Set mandatory headers
-    
+    response.setHeader('Content-Type', 'text/plain'); // This will be changed by the different parts if necessary. However, setting it now allows us to remove it from every error clause.
     let url = newURL(request.url);
     if (url === null) { 
         console.log("[Request (Music)] Invalid URL:", request.url);
-        error(badRequest, response);
+        bodylessResponse(badRequest, '', response);
         return;
     }
     // Node already lowercases the header, as well as remove duplicate entries. Nothing to do in that regard
@@ -28,18 +28,20 @@ export async function handle(request, response) {
     console.log("[Request (Music)] Headers:", request.headers);
     
     switch (url.paths[0]) {
-        case '': // This is the root
+        case 'html': // This is the root
+            url.shift();
+        case '':
             await html.handle(url, request, response);
             break;
         case 'assets':
             url.shift();
             await assets.handle(url, request, response);
+            break;
         case 'api':
             url.shift();
             await api.handle(url, request, response); // We redirect the request to the API
             break;
         default:
-            response.setHeader('Content-Type', 'text/plain');
             bodylessResponse(notFound, '', response);
     }
 }

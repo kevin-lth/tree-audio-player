@@ -1,10 +1,10 @@
 import { getAPI } from './api.mjs';
 
-import { newParameters, newMimeType, newAcceptHeader, newAuthorizationHeader, newCookieHeader, newRangeHeader, newInt, newBoolean, 
-    bodylessResponse, bodyResponse, bodylessStreamResponse, bodyStreamResponse, getRequestBody } from './../utils.mjs'
+import { newMimeType, newAcceptHeader, newRangeHeader, newInt, newBoolean, bodylessResponse, 
+    bodyResponse, bodylessStreamResponse, bodyStreamResponse, getToken, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newIDlessMusic } from '../common/models.mjs';
 
-const Ok = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;
+const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
 const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*,application/octet-stream');
@@ -56,21 +56,11 @@ export async function handle(url, request, response) {
                 // We could support having routes that corresponds to incomplete URL, however since this isn't necessary with this configuration
                 // We could check directly the length of the array of the path and its first value. Since we won't be using this URL again, we can just read shift the array and see if it is empty
                 if (url.shift() === '') { await result(method, token, url.parameters, request, response); }
-                else { bodylessResponse(notFound, response); }
+                else { bodylessResponse(notFound, '', response); }
                 processed = true;
             } else { currentRoutes = result; } // The route is still incomplete. We can go on shifting the array, as the path will be empty if it reaches the end
         } else { bodylessResponse(notFound, '', response); processed = true; }
     }
-}
-
-// We have 2 ways to obtain the currently used token, and the first one takes precedent over the second:
-// 1) Check the Authorization header. It HAS to be of type Bearer and must be followed by a session token.
-// 2) Check the cookies.
-async function getToken(request) {
-    const authorization = newAuthorizationHeader(request.headers['authorization']), cookies = newCookieHeader(request.headers['cookie']);
-    if (authorization !== null && authorization.type === 'Bearer') { return authorization.token; }
-    else if (cookies !== null && cookies['token'] !== undefined) { return cookies['token']; }
-    else { return null; }
 }
 
 // The functions below are responsible for obtaining the information required from the request, building some objects if needed and passing them on to the API.

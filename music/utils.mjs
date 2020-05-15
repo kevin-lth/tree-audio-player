@@ -185,6 +185,16 @@ export function bodyStreamResponse(status_code, body, request, response) {
     });
 }
 
+// We have 2 ways to obtain the currently used token, and the first one takes precedent over the second:
+// 1) Check the Authorization header. It HAS to be of type Bearer and must be followed by a session token.
+// 2) Check the cookies.
+export async function getToken(request) {
+    const authorization = newAuthorizationHeader(request.headers['authorization']), cookies = newCookieHeader(request.headers['cookie']);
+    if (authorization !== null && authorization.type === 'Bearer') { return authorization.token; }
+    else if (cookies !== null && cookies['token'] !== undefined) { return cookies['token']; }
+    else { return null; }
+}
+
 //
 // Request body
 //

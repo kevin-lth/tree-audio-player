@@ -1,5 +1,5 @@
 import { newConnection } from './database.mjs';
-import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFileWithFormat, processMusicFile } from './file.mjs';
+import { getCategoryCoverStream, getDefaultCategoryCoverStream, processCategoryCover, getMusicFileWithFormat, processMusicFile } from '../file_utils.mjs';
 
 const OK = 200, accepted = 202, partialContent = 206, badRequest = 400, unauthorized = 401, forbidden = 403, notFound = 404, internalServerError = 500;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
@@ -31,7 +31,7 @@ export function getAPI() {
     async function getSessionStatus(token) {
         if (!(await __prepareConnection())) { return newAPIResponse(null, internalServerError); } // We don't use checkSession because we want a normal response if the server works but the session doesn't exist
         const session = await connection.getSessionFromToken(token);
-        if (session === null) { return newAPIResponse({ id: null, username: null }, OK); }
+        if (session === null) { return newAPIResponse({ username: null }, OK); }
         else {
             const account = await connection.getAccount(session.account_id);
             if (account === null) { return newAPIResponse(null, internalServerError); }
@@ -383,11 +383,6 @@ export function getAPI() {
 
             }
         }
-    }
-    
-    // This function should not be called directly. It is intended to be executed after the API : no checks will be done here.
-    async function __processMusicFile(music_id, temporary_url) {
-
     }
     
     return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics, addMusic, getMusic, updateMusic, deleteMusic, getMusicFile, setMusicFile };
