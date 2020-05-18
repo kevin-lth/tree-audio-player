@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import easyimage from 'easyimage';
 import ffmpeg from 'fluent-ffmpeg';
 
-const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir(), assets_dir = './assets/';
+const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir(), assets_dir = './assets/music/';
 
 // You might need to change your values for your own installation
 const audio_formats = {
