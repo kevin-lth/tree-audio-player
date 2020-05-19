@@ -8,6 +8,7 @@ const OK = 200, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, int
 const known_assets = {
     'main.js': { url: "main.js", mime_type: "text/javascript" },
     'main.css': { url: "main.css", mime_type: "text/css" },
+    'logo.svg': { url: "logo.svg", mime_type: "image/svg+xml" },
 }
 
 // Deals with a request.

@@ -18,6 +18,7 @@ export function newRender(bindings) {
         <title>${prefix_title} - ${title}</title>
         <link rel="preload" href="/assets/main.css" as="style" />
         <link rel="preload" href="/assets/main.js" as="script" />
+        <link rel="preload" href="/assets/logo.svg" as="image" />
         
         <link rel="stylesheet" href="/assets/main.css" />
     </head>
@@ -50,7 +51,7 @@ export function newRender(bindings) {
     }
     
     async function renderDesktopHeader(token) {
-        return ``;
+        return `<span class="header-logo"><img src="/assets/logo.svg" /></span>`;
     }
     
     async function renderMobileHeader(token) {

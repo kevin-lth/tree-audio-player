@@ -8,6 +8,8 @@ const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcc
 
 let routes = {
     '': handleHome,
+    login: handleLogin,
+    logout: handleLogout,
     category: {
         public: handleCategoryPublic,
         personal: handleCategoryPersonal,
@@ -55,6 +57,14 @@ export async function handle(url, request, response) {
 
 async function handleHome(method, token, parameters, request, response) {
     bodyResponse(OK, await render.renderHome(token), response);
+}
+
+async function handleLogin(method, token, parameters, request, response) {
+
+}
+
+async function handleLogout(method, token, parameters, request, response) {
+
 }
 
 async function handleCategoryPublic(method, token, parameters, request, response) {
