@@ -1,3 +1,30 @@
-.desktop-header {
+@media (min-width: 720px) {
+    .desktop-header {
+        display: block;
+    }
+    .desktop-nav {
+        display: block;
+    }
     
+    .mobile-header {
+        display: none;
+    }
+    .mobile-nav {
+        display: none;
+    }
+}
+@media (max-width: 719px) {
+    .desktop-header {
+        display: none;
+    }
+    .desktop-nav {
+        display: none;
+    }
+    
+    .mobile-header {
+        display: block;
+    }
+    .mobile-nav {
+        display: block;
+    }
 }
