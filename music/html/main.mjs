@@ -94,6 +94,6 @@ async function handleSettings(method, token, parameters, request, response) {
 
 
 async function handleAbout(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderAbout(token), response);
 }
 
