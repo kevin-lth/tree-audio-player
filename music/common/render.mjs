@@ -10,7 +10,8 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderLogin(token) {
-        return await renderPage(token, 'home', 'Login', 'Login');
+        const body = 'Login: TODO';
+        return await renderPage(token, 'home', 'Login', body);
     }
     
     // TODO: Complete + session check below
