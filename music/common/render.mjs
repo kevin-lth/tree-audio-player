@@ -16,8 +16,8 @@ export function newRender(bindings) {
     // Internal render functions that are used by more specific functions for each page : they are the templates that will be filled with data.
 
     async function renderPage(token, title_suffix, main) {
-        const result = await Promise.all([renderHeaders(token), renderNavs(token), renderFooter()]); // We use Promise.all to allow both promises to happen simultaneously, which wouldn't be possible with merely await
-        const header = result[0], nav = result[1], footer = result[2];
+        const result = await Promise.all([renderHeader(token), renderNavs(token), renderFooter()]); // We use Promise.all to allow both promises to happen simultaneously, which wouldn't be possible with merely await
+        const header = result[0], navs = result[1], footer = result[2];
         return `<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-GB" xml:lang="en-GB">
     <head>
@@ -33,13 +33,10 @@ export function newRender(bindings) {
         <link rel="stylesheet" href="/assets/main.css" />
     </head>
     <body>
-        <header>
-            <div class="desktop-header">${header.desktop}</div>
-            <div class="mobile-header">${header.mobile}</div>
-        </header>
+        <header class="header">${header}</header>
         <nav>
-            <div class="desktop-nav">${nav.desktop}</div>
-            <div class="mobile-nav">${nav.mobile}</div>
+            <div class="desktop-nav">${navs.desktop}</div>
+            <div class="mobile-nav">${navs.mobile}</div>
         </nav>
         <main class="main">${main}</main>
         <footer class="footer">${footer}</footer>
@@ -60,7 +57,7 @@ export function newRender(bindings) {
         return { desktop: await renderDesktopNav(token), mobile: await renderMobileNav(token) }
     }
     
-    async function renderDesktopHeader(token) {
+    async function renderHeader(token) {
         const session_status = await bindings.getSessionStatus(token);
         let username = 'visitor';
         if (session_status.http_code === HTTP_OK && session_status.response.username !== null) { username = `<span class="header-username">${session_status.response.username}</span>`; }
@@ -69,16 +66,7 @@ export function newRender(bindings) {
 <span class="header-hello">Hello, <span class="header-username">${username}</span> !</span>`;
     }
     
-    // TODO
-    async function renderMobileHeader(token) {
-        return ``;
-    }
-    
-    async function renderHeaders(token) {
-        return { desktop: await renderDesktopHeader(token), mobile: await renderMobileHeader(token) }
-    }
-    
-    // TODO : Footer will contain music player
+    // TODO : Footer will contain music player, will be handled by client
     async function renderFooter() {
         return ``;
     }
