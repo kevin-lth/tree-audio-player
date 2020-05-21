@@ -9,7 +9,6 @@ const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcc
 let routes = {
     '': handleHome,
     login: handleLogin,
-    logout: handleLogout,
     category: {
         public: handleCategoryPublic,
         personal: handleCategoryPersonal,
@@ -60,36 +59,35 @@ async function handleHome(method, token, parameters, request, response) {
 }
 
 async function handleLogin(method, token, parameters, request, response) {
-
-}
-
-async function handleLogout(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderLogin(token), response);
 }
 
 async function handleCategoryPublic(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderCategoryPublic(token), response);
 }
 
 async function handleCategoryPersonal(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderCategoryPersonal(token), response);
 }
 
+// TODO: Parameters
 async function handleCategoryDetails(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderCategoryDetails(token), response);
 }
 
-async function handleCategoryEdit(method, token, parameters, request, response) {
 
+// TODO: Parameters
+async function handleCategoryEdit(method, token, parameters, request, response) {
+    bodyResponse(OK, await render.renderCategoryEdit(token), response);
 }
 
 async function handlePlaylist(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderPlaylist(token), response);
 }
 
 
 async function handleSettings(method, token, parameters, request, response) {
-
+    bodyResponse(OK, await render.renderSettings(token), response);
 }
 
 
