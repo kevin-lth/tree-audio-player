@@ -241,7 +241,7 @@ export async function newConnection() {
         async function checkAccountCredentials(account) {
             try {
                 const db_account = await statements.getAccountFromUsername.get({ $username: account.username });
-                if (db_account !== undefined) { return -1 }
+                if (db_account === undefined) { return -1 }
                 if (await bcrypt.compare(account.password, db_account.hashed_password)) { return db_account.account_id; } 
                 else { return -1; }
             } catch (error) {
