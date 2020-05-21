@@ -70,7 +70,7 @@ function login() {
         function clearPassword() {
             password_query.value = '';
         }
-        sendRequestToAPI('POST', '/api/account/login/', encodeParameters(data), { 'Content-Type': 'application/x-www-form-urlencoded' }, clearPassword, clearPassword);
+        sendRequestToAPI('POST', '/api/account/login/', encodeParameters(data), { 'Content-Type': 'application/x-www-form-urlencoded' }, gotoHome, clearPassword);
     }
 }
 

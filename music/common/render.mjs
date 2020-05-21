@@ -10,10 +10,14 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderLogin(token) {
-        const body = `<input type="text" id="login-username" maxlength="16" />
-                      <input type="password" id="login-password" maxlength="32" />
-                      <span id="login-submit">Log In</span>`;
-        return await renderPage(token, 'home', 'Login', body);
+        const session_status = await bindings.getSessionStatus(token);
+        let body;
+        if (session_status.http_code === HTTP_OK && session_status.response.username === null) {
+            body = `<input type="text" id="login-username" maxlength="16" />
+                          <input type="password" id="login-password" maxlength="32" />
+                          <span id="login-submit">Log In</span>`;
+        } else { body = 'You are already logged in !'; }
+            return await renderPage(token, 'home', 'Login', body);
     }
     
     // TODO: Complete + session check below
