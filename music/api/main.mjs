@@ -127,7 +127,7 @@ async function handleAccountLogin(method, token, parameters, request, response) 
             api_response = await API.loginAccount(token, account);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
             else {
-                response.setHeader('Set-Cookie', `token=${api_response.response.token}; Max-Age=1209600; Secure; HttpOnly`); // 1209600 seconds = 2 weeks
+                response.setHeader('Set-Cookie', `token=${api_response.response.token}; Max-Age=1209600; Path=/; Secure; HttpOnly`); // 1209600 seconds = 2 weeks
                 bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response);
             }
             await data.deleteAllTemporaryFiles();
@@ -142,6 +142,7 @@ async function handleAccountLogout(method, token, parameters, request, response)
     switch (method) {
         case 'POST':
             api_response = await API.logoutAccount(token);
+            if (api_response.response === OK) { response.setHeader('Set-Cookie', `token=${token}; Max-Age=0; Path=/, Secure; HttpOnly`); }
             bodylessResponse(api_response.http_code, '', response);
             break;
         default: // We reject HEAD and GET to prevent normal users to logout by error simply by going to the URL
