@@ -10,7 +10,9 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderLogin(token) {
-        const body = 'Login: TODO';
+        const body = `<input type="text" id="login-username" maxlength="16" />
+                      <input type="password" id="login-password" maxlength="32" />
+                      <span id="login-submit">Log In</span>`;
         return await renderPage(token, 'home', 'Login', body);
     }
     
@@ -69,13 +71,13 @@ export function newRender(bindings) {
                         <link rel="stylesheet" href="/assets/main.css" />
                     </head>
                     <body>
-                        <header class="header">${header}</header>
+                        <header>${header}</header>
                         <nav>
-                            <div class="desktop-nav">${navs.desktop}</div>
-                            <div class="mobile-nav">${navs.mobile}</div>
+                            <div id="desktop-nav">${navs.desktop}</div>
+                            <div id="mobile-nav">${navs.mobile}</div>
                         </nav>
-                        <main class="main">${main}</main>
-                        <footer class="footer">${footer}</footer>
+                        <main>${main}</main>
+                        <footer>${footer}</footer>
                         <script src="/assets/main.js"></script> <!-- Executing the script before would slow the first paint of the page -->
                     </body>
                 </html>`;
@@ -85,14 +87,14 @@ export function newRender(bindings) {
     async function renderHeader(token) {
         const session_status = await bindings.getSessionStatus(token);
         let username = 'visitor';
-        let login_or_logout = '<a href="/html/login/" class="header-login">Login</a>';
+        let login_or_logout = '<a href="/html/login/" id="header-login">Login</a>';
         if (session_status.http_code === HTTP_OK && session_status.response.username !== null) { 
-            username = `<span class="header-username">${session_status.response.username}</span>`;
-            login_or_logout = '<span class="header-logout">Logout</span>'; // We don't use a form with POST because that would redirect to the API, which we don't want. We will handle logout with javascript.
+            username = `<span id="header-username">${session_status.response.username}</span>`;
+            login_or_logout = '<span id="header-logout">Logout</span>'; // We don't use a form with POST because that would redirect to the API, which we don't want. We will handle logout with javascript.
         }
-        return `<a href="/html" class="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" /></a>
-                <span class="header-title">Tree Audio Player</span>
-                <span class="header-hello">Hello, ${username} !</span>
+        return `<a href="/html" id="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" /></a>
+                <span id="header-title">Tree Audio Player</span>
+                <span id="header-hello">Hello, ${username} !</span>
                 ${login_or_logout}`;
     }
     
