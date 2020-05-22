@@ -40,6 +40,7 @@ export async function newConnection() {
                     music_id INTEGER PRIMARY KEY,
                     full_name TEXT NOT NULL,
                     track INTEGER NOT NULL,
+                    duration INTEGER NOT NULL,
                     category_id INTEGER NOT NULL,
                     FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE,
                     FOREIGN KEY (uploader_id) REFERENCES account (account_id) ON DELETE CASCADE
@@ -175,12 +176,12 @@ export async function newConnection() {
                     `SELECT COUNT(1) AS checkCount FROM category WHERE (category_id=$category_id AND 
                         creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id);`),
                 deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id;`),
-                getAllMusicsFromCategory: await db.prepare(`SELECT music_id, full_name, category_id, track FROM music WHERE category_id=$category_id;`),
+                getAllMusicsFromCategory: await db.prepare(`SELECT music_id, full_name, category_id, track, duration FROM music WHERE category_id=$category_id;`),
                 getAllMusicsFromCategoryAndChildren: await db.prepare(
-                    `SELECT music_id, full_name, category_id, track FROM music WHERE category_id IN 
+                    `SELECT music_id, full_name, category_id, track, duration FROM music WHERE category_id IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id);`),
                 createMusic: await db.prepare('INSERT INTO music (full_name, category_id, track) VALUES ($full_name, $category_id, $track);'),
-                getMusic: await db.prepare('SELECT music_id, full_name, category_id, track FROM music WHERE music_id=$music_id;'),
+                getMusic: await db.prepare('SELECT music_id, full_name, category_id, track, duration FROM music WHERE music_id=$music_id;'),
                 updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, category_id=$category_id, track=$track WHERE music_id=$music_id;'),
                 deleteMusic: await db.prepare('DELETE FROM music WHERE music_id = $music_id;'),
                 createTag: await db.prepare('INSERT INTO tag (tag_name) VALUES ($tag_name);'),
@@ -193,6 +194,7 @@ export async function newConnection() {
                 addMusicURL: await db.prepare('INSERT INTO music_urls (music_id, format, url) VALUES ($music_id, $format, $url);'),
                 getMusicURLs: await db.prepare('SELECT music_id, format, url FROM music_urls WHERE music_id=$music_id;'),
                 deleteMusicURL: await db.prepare('DELETE FROM music_urls WHERE music_id=$music_id AND format=$format;'),
+                setMusicDuration: await db.prepare('UPDATE music SET duration=$duration WHERE music_id=$music_id;'),
             };
         }
         await initDatabase();
@@ -606,7 +608,7 @@ export async function newConnection() {
         
         // Util functions
         function __getMusicObjectFromResult(music_result, tags, formats) {
-            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, tags, formats);
+            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, music_result.duration, tags, formats);
         }
         
         async function __setMusicTags(music_id, tags) {
@@ -658,6 +660,7 @@ export async function newConnection() {
             }
         }
         
+        // We ignore duration as it is a redundant value stored to prevent opening every music file each time.
         async function updateMusic(music_id, updated_music) {
             try {
                 await statements.updateMusic.run({ $music_id: music_id, $full_name: updated_music.full_name, $category_id: updated_music.category_id, $track: updated_music.track });
@@ -713,7 +716,17 @@ export async function newConnection() {
             }
         }
         
-        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic, addMusicFormatAndURL, getMusicFormatsAndURLs, removeMusicFormat };
+        async function setMusicDuration(music_id, duration) {
+            try {
+                await statements.setMusicDuration.run({ $music_id: music_id, $duration: duration });
+                return true;
+            } catch (error) {
+                console.log(`[Database] setMusicDuration failed ! music_id = ${music_id}, duration = ${duration}, error = ${error}`);
+                return false;
+            }
+        }
+        
+        return { available, close, createAccount, getAccount, checkAccountCredentials, updateAccount, deleteAccount, createSession, getSessionFromToken, revokeSession, createCategory, getCategory, updateCategory, deleteCategory, setCategoryCoverURL, getCategoryCoverURL, deleteCategoryCoverURL, getAllPublicCategories, getAllPersonalCategories, bindCategoryToParent, getParentCategory, checkParentCategory, unbindCategoryFromParent, addSymlinkCategory, checkSymlinkCategory, getSymlinkCategories, removeSymlinkCategory, grantCategoryAccess, checkCategoryAccess, checkCategoryOwnership, revokeCategoryAccess, getAllMusics, createMusic, getMusic, updateMusic, deleteMusic, addMusicFormatAndURL, getMusicFormatsAndURLs, removeMusicFormat, setMusicDuration };
         
     } catch (error) {
         console.log(`[Database] Error when trying to initialize ! error = ${error}`);

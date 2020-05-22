@@ -1,5 +1,3 @@
-import { newInt, newBoolean } from '../utils.mjs';
-
 const alphanumeric = /^\w+$/, alphanumericAndNonWebCharacters = /^[\w| |\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~|'|`]+$/;
 
 export function newAccount(username, password) {
@@ -23,7 +21,7 @@ export function newIDlessCategory(full_name, short_name, is_public, children) {
 export function newCategory(id, name, short_name, is_public, creator, children) {
     const category = newIDlessCategory(name, short_name, is_public, children), checked_id = newInt(id);
     // We only check the validity of the ID.
-    if (checked_id !== null && (creator !== undefined && creator !== null && creator.match(alphanumeric) && creator.length <= 16) && category !== null) {
+    if (checked_id !== null && checked_id >= 0 && (creator !== undefined && creator !== null && creator.match(alphanumeric) && creator.length <= 16) && category !== null) {
         category['id'] = checked_id;
         category['creator'] = creator;
         return category;
@@ -42,10 +40,11 @@ export function newIDlessMusic(full_name, category_id, track, tags) {
     } else { return null; }
 }
 
-export function newMusic(id, full_name, category_id, track, tags, formats) {
-    const music = newIDlessMusic(full_name, category_id, track, tags), checked_id = newInt(id), checked_formats = [];
-    if (checked_id !== null && music !== null) {
+export function newMusic(id, full_name, category_id, track, duration, tags, formats) {
+    const music = newIDlessMusic(full_name, category_id, track, tags), checked_id = newInt(id), checked_duration = newInt(duration), checked_formats = [];
+    if (checked_id !== null && checked_id >= 0 && checked_duration !== null && checked_duration >= 0 && music !== null) {
         music['id'] = checked_id;
+        music['duration'] = checked_duration;
         if (formats === undefined || Array.isArray(formats)) {
             if (formats !== undefined) {
                 for (let i = 0; i < formats.length; i++) {
@@ -57,5 +56,18 @@ export function newMusic(id, full_name, category_id, track, tags, formats) {
         music['formats'] = checked_formats;
         return music;
     } else { return null; }
+}
+
+// Util functions
+
+export function newInt(number) {
+    if (number === undefined || number === null || number === '' || isNaN(number)) { return null; }
+    else { return parseInt(number); }
+}
+
+export function newBoolean(boolean) {
+    if (boolean === undefined || boolean === null || (boolean !== true && boolean !== 'true' && boolean !== false && boolean !== 'false')) { return null; }
+    else if (boolean === 'true') { return true; } else if (boolean === 'false') { return false; } 
+    else { return boolean };
 }
 

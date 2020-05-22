@@ -126,17 +126,6 @@ export function newRangeHeader(range_header) {
     return { start, end, reversed };
 }
 
-export function newInt(number) {
-    if (number === undefined || number === null || number === '' || isNaN(number)) { return null; }
-    else { return parseInt(number); }
-}
-
-export function newBoolean(boolean) {
-    if (boolean === undefined || boolean === null || (boolean !== true && boolean !== 'true' && boolean !== false && boolean !== 'false')) { return null; }
-    else if (boolean === 'true') { return true; } else if (boolean === 'false') { return false; } 
-    else { return boolean };
-}
-
 // We still ask for the potential body to get the content-length (useful for HEAD requests)
 export function bodylessResponse(status_code, body, response) {
     response.setHeader('Content-Length', Buffer.byteLength(body));

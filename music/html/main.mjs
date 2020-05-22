@@ -1,7 +1,7 @@
 import { newRender } from '../common/render.mjs';
 import { newBindings } from '../common/bindings/server_bindings.mjs';
 
-import { newMimeType, newAcceptHeader, newInt, newBoolean, bodylessResponse, bodyResponse, 
+import { newMimeType, newAcceptHeader, bodylessResponse, bodyResponse, 
     bodylessStreamResponse, getToken, bodyStreamResponse, getRequestBody } from './../utils.mjs';
 
 const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;

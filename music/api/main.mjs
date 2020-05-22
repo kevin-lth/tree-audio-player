@@ -1,8 +1,8 @@
 import { getAPI } from './api.mjs';
 
-import { newMimeType, newAcceptHeader, newRangeHeader, newInt, newBoolean, bodylessResponse, 
+import { newMimeType, newAcceptHeader, newRangeHeader, bodylessResponse, 
     bodyResponse, bodylessStreamResponse, bodyStreamResponse, getToken, getRequestBody } from './../utils.mjs'
-import { newAccount, newIDlessCategory, newIDlessMusic } from '../common/models.mjs';
+import { newAccount, newIDlessCategory, newIDlessMusic, newInt, newBoolean } from '../common/models.mjs';
 
 const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
