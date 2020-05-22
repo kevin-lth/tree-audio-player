@@ -15,6 +15,7 @@ export function newRender(bindings) {
         if (session_status.http_code === HTTP_OK && session_status.response.username === null) {
             body = `<input type="text" id="login-username" maxlength="16" />
                           <input type="password" id="login-password" maxlength="32" />
+                          <span id="login-message"></span>
                           <span id="login-submit">Log In</span>`;
         } else { body = 'You are already logged in !'; }
             return await renderPage(token, 'home', 'Login', body);
@@ -138,6 +139,15 @@ export function newRender(bindings) {
     async function renderNavs(token, selected_page) {
         return { desktop: await renderDesktopNav(token, selected_page), mobile: await renderMobileNav(token, selected_page) }
     }
+    
+    // These 2 functions don't perform checks on the session but merely renders the basic format for both a category and a music
+    async function renderCategory(category) {
+    
+    }
+    
+    async function renderMusic(music) {
+    
+    } 
     
     // TODO : Footer will contain music player, will be handled by client
     async function renderFooter() {
