@@ -67,10 +67,12 @@ function login() {
     if (username_query !== null && password_query !== null) {
         const username = username_query.value, password = password_query.value; // We will not do any checks here. The service worker will do a check if he is loaded, the server will always check
         const data = { username, password };
-        function clearPassword() {
+        function failedLogin() {
+            const message_query = document.querySelector('#login-message');
+            if (message_query !== null) { message_query.textContent = 'Login failed ! Please check your credentials.' }
             password_query.value = '';
         }
-        sendRequestToAPI('POST', '/api/account/login/', encodeParameters(data), { 'Content-Type': 'application/x-www-form-urlencoded' }, gotoHome, clearPassword);
+        sendRequestToAPI('POST', '/api/account/login/', encodeParameters(data), { 'Content-Type': 'application/x-www-form-urlencoded' }, gotoHome, failedLogin);
     }
 }
 
