@@ -1,5 +1,6 @@
 import { newRender } from '../common/render.mjs';
 import { newBindings } from '../common/bindings/server_bindings.mjs';
+import { newInt } from '../common/models.mjs';
 
 import { newMimeType, newAcceptHeader, bodylessResponse, bodyResponse, 
     bodylessStreamResponse, getToken, bodyStreamResponse, getRequestBody } from './../utils.mjs';
@@ -33,6 +34,9 @@ export async function handle(url, request, response) {
     
     const method = request.headers[':method'];
     const token = await getToken(request);
+    
+    // We only allow HEAD et GET for the HTML pages
+    if (method !== 'HEAD' && method !== 'GET') { bodylessResponse(methodNotAllowed, '', response); }
 
     let currentRoutes = routes;
     let processed = false;
@@ -53,24 +57,30 @@ export async function handle(url, request, response) {
 }
 
 async function handleHome(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderHome(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderHome(token), response); }
+    else { bodyResponse(OK, await render.renderHome(token), response); } // We already checked if it was HEAD or GET, so it has to be GET
 }
 
 async function handleLogin(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderLogin(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderLogin(token), response); }
+    else { bodyResponse(OK, await render.renderLogin(token), response); }
 }
 
 async function handleCategoryPublic(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderCategoryPublic(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryPublic(token), response); }
+    else { bodyResponse(OK, await render.renderCategoryPublic(token), response); }
 }
 
 async function handleCategoryPersonal(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderCategoryPersonal(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryPersonal(token), response); }
+    else { bodyResponse(OK, await render.renderCategoryPersonal(token), response); }
 }
 
-// TODO: Parameters
 async function handleCategoryDetails(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderCategoryDetails(token), response);
+    const id = newInt(parameters['id']);
+    if (id === null) { bodylessResponse(badRequest, '', response) }
+    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryDetails(token, id), response); }
+    else { bodyResponse(OK, await render.renderCategoryDetails(token, id), response); }
 }
 
 

@@ -40,7 +40,8 @@ export function newRender(bindings) {
                                                     <img src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo" />
                                                     ${category_owned_img}
                                                     <span>${category.full_name}</span>
-                                                    <button class="category-access" data-category-id="${category.id}">Request access</button>
+                                                    <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
+                                                    <button class="category-access" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request access</button>
                                                 </article>`;
                         }
                         body = `${body_categories}`
@@ -66,12 +67,12 @@ export function newRender(bindings) {
                             const category = categories.response[i], owned = (category.owner === session_status.response.username);
                             const category_owned_class = owned ? 'owned-category' : '';
                             const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
-                            const category_revoke_button = owned ? '' : `<button class="category-revoke" data-category-id="${category.id}">Revoke access</button>`;
+                            const category_revoke_button = owned ? '' : `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke access</button>`;
                             body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
                                                     <img src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo" />
                                                     ${category_owned_img}
                                                     <span>${category.full_name}</span>
-                                                    <button class="category-details" data-category-id="${category.id}">Details</button>
+                                                    <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
                                                     ${category_revoke_button}
                                                 </article>`;
                         }
@@ -86,8 +87,8 @@ export function newRender(bindings) {
     }
     
     // TODO: Complete
-    async function renderCategoryDetails(token) {
-        return await renderPage(token, 'category_personal', 'Category Details', 'Details');
+    async function renderCategoryDetails(token, id) {
+        return await renderPage(token, 'category_personal', 'Category Details', 'Details ID=' + id);
     }
     
     // TODO: Complete
