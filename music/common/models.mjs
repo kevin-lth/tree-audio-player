@@ -21,7 +21,7 @@ export function newIDlessCategory(full_name, short_name, is_public, children) {
 export function newCategory(id, name, short_name, is_public, creator, children) {
     const category = newIDlessCategory(name, short_name, is_public, children), checked_id = newInt(id);
     // We only check the validity of the ID.
-    if (checked_id !== null && checked_id >= 0 && (creator !== undefined && creator !== null && creator.match(alphanumeric) && creator.length <= 16) && category !== null) {
+    if (checked_id !== null && checked_id >= 0 && creator !== undefined && creator !== null && creator.match(alphanumeric) && creator.length <= 16 && category !== null) {
         category['id'] = checked_id;
         category['creator'] = creator;
         return category;

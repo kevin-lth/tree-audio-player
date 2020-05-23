@@ -1,34 +1,61 @@
 export function newRender(bindings) {
 
-    const title_prefix = 'Tree Audio Player';
-    const HTTP_OK = 200;
+    const title_prefix = 'Tree Audio Player', unknown_error = 'An error occured. Please try again later.', not_logged_in = 'You are not logged in !', already_logged_in = 'You are already logged in !';
+    const OK = 200, unauthorized = 401, internalServerError = 500;
 
     // TODO: Do proper home
     async function renderHome(token) {
         return await renderPage(token, 'home', 'Home', 'Hello World !');
     }
     
-    // TODO: Complete
     async function renderLogin(token) {
         const session_status = await bindings.getSessionStatus(token);
         let body;
-        if (session_status.http_code === HTTP_OK && session_status.response.username === null) {
+        if (session_status.http_code === OK) {
+            if (session_status.response.username === null) {
             body = `<input type="text" id="login-username" maxlength="16" />
                           <input type="password" id="login-password" maxlength="32" />
                           <span id="login-message"></span>
                           <span id="login-submit">Log In</span>`;
-        } else { body = 'You are already logged in !'; }
-            return await renderPage(token, 'home', 'Login', body);
+            } else { body = already_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'home', 'Login', body);
     }
     
-    // TODO: Complete + session check below
     async function renderCategoryPublic(token) {
-        return await renderPage(token, 'category_public', 'Public Categories', 'Public');
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const categories = await bindings.getPublicCategories(token);
+                switch (categories.http_code) {
+                    case OK:
+                        body = renderCategoryList(categories.response, session_status.response.username);
+                        break;
+                    case unauthorized: case internalServerError: default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_public', 'Public Categories', body);
     }
     
-    // TODO: Complete
     async function renderCategoryPersonal(token) {
-        return await renderPage(token, 'category_personal', 'Personal Categories', 'Personal');
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const categories = await bindings.getPersonalCategories(token);
+                switch (categories.http_code) {
+                    case OK:
+                        body = renderCategoryList(categories.response, session_status.response.username);
+                        break;
+                    case unauthorized: case internalServerError: default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_personal', 'Personal Categories', body);
     }
     
     // TODO: Complete
@@ -93,7 +120,7 @@ export function newRender(bindings) {
         const session_status = await bindings.getSessionStatus(token);
         let username = 'visitor';
         let login_or_logout = '<a href="/html/login/" id="header-login">Login</a>';
-        if (session_status.http_code === HTTP_OK && session_status.response.username !== null) { 
+        if (session_status.http_code === OK && session_status.response.username !== null) {
             username = `<span id="header-username">${session_status.response.username}</span>`;
             login_or_logout = '<span id="header-logout">Logout</span>'; // We don't use a form with POST because that would redirect to the API, which we don't want. We will handle logout with javascript.
         }
@@ -115,7 +142,7 @@ export function newRender(bindings) {
     async function renderNavElements(token, selected_page, show_text) {
         const session_status = await bindings.getSessionStatus(token);
         let user_only_elements = '';
-        if (session_status.http_code === HTTP_OK && session_status.response.username !== null) { 
+        if (session_status.http_code === OK && session_status.response.username !== null) { 
             user_only_elements = `${renderNavElement('category_public', selected_page, '/html/category/public/', '', 'Public Categories', show_text)}
                                   ${renderNavElement('category_personal', selected_page, '/html/category/personal/', '', 'Personal Categories', show_text)}
                                   ${renderNavElement('playlist', selected_page, '/html/playlist/', '', 'Playlist', show_text)}`;
@@ -141,20 +168,29 @@ export function newRender(bindings) {
     }
     
     // These 2 functions don't perform checks on the session but merely renders the basic format for both a category and a music
-    async function renderCategory(category) {
-    
+    function renderCategory(category, account_username) {
+        let ownership = '';
+        if (category.creator === account_username) { ownership = `<span>Owned</span>` }
+        return `<article id="category_${category.id}" data-category-id="${category.id}"><img src="/api/category/cover?id=${category.id}"></img>${ownership}</article>`;
     }
     
-    async function renderMusic(music) {
+    function renderMusic(music) {
+        return ``;
+    }
     
+    function renderCategoryList(categories, account_username) {
+        let result = '';
+        if (categories !== null) {
+            for (let i = 0; i < categories.length; i++) {
+                const category = categories[i];
+                result += `${renderCategory(category, account_username)}`;
+            }
+        }
+        return result;
     } 
     
     // TODO : Footer will contain music player, will be handled by client
     async function renderFooter() {
-        return ``;
-    }
-    
-    async function renderCategory(category) {
         return ``;
     }
     

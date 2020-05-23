@@ -19,7 +19,7 @@ function __getMusicURL(music_url, format) { return music_dir + `${music_url}.${f
 function __getTempURL(temp_url) { return `${temp_dir}/tree_audio_player_${temp_url}` }
 function __getAssetURL(asset_url) { return assets_dir + asset_url; }
 
-async function __getStream(path, mime_type, range = null) {
+async function __getStream(path, etag, mime_type, range = null) {
     try {
         const stats = await fs.promises.stat(path);
         if (stats !== null) {
@@ -31,9 +31,9 @@ async function __getStream(path, mime_type, range = null) {
                 else { stream_start = range.start, stream_end = Math.min(range.end, total_size); }
                 return {
                     stream: fs.createReadStream(path, { start: stream_start, end: stream_end}), partial, total_size, 
-                    range_size: stream_end-stream_start+1, start: stream_start, end: stream_end, mime_type
+                    range_size: stream_end-stream_start+1, range_start: stream_start, range_end: stream_end, etag, mime_type
                };
-            } else { return { stream: fs.createReadStream(path), partial, total_size, mime_type }; }
+            } else { return { stream: fs.createReadStream(path), partial, total_size, etag, mime_type }; }
         }
         else { return null; }
     } catch (error) {
@@ -56,7 +56,7 @@ function __promise_ffmpeg(file_name, format, new_file_name) {
 
 export async function getCategoryCoverStream(cover_url, range) {
     try {
-        return await __getStream(__getCoverURL(cover_url), 'image/png', range);
+        return await __getStream(__getCoverURL(cover_url), cover_url, 'image/png', range);
     } catch (error) {
         console.log(`[File] getCategoryCover failed ! cover_url = ${cover_url}, error = ${error}.`);
         return null;
@@ -65,7 +65,7 @@ export async function getCategoryCoverStream(cover_url, range) {
 
 export async function getDefaultCategoryCoverStream(range) {
     try {
-        return await __getStream('./media/music/default_cover.png', 'image/png', range);
+        return await __getStream('./media/music/default_cover.png', 'default', 'image/png', range);
     } catch (error) {
         console.log(`[File] getDefaultCategoryCover failed ! error = ${error}. Please check that there is a default cover in your media folder.`);
         return null;
@@ -94,7 +94,7 @@ export async function getMusicFileWithFormat(file_url, range, format) { // Odd n
     if (audio_formats[format] === undefined) { return null; }
     try {
         const format_info = audio_formats[format];
-        return await __getStream(__getMusicURL(file_url, format_info), format_info.mime_type, range);
+        return await __getStream(__getMusicURL(file_url, format_info), file_url, format_info.mime_type, range);
     } catch (error) {
         console.log(`[File] getMusicFile failed ! file_url = ${file_url}, format = ${format}, error = ${error}.`);
         return null;
@@ -121,7 +121,7 @@ export async function processMusicFile(file_name) {
 
 export async function getAsset(asset) {
     try {
-        return await __getStream(__getAssetURL(asset.url), asset.mime_type);
+        return await __getStream(__getAssetURL(asset.url), null, asset.mime_type);
     } catch (error) {
         console.log(`[File] getAsset failed ! asset = ${asset}, error = ${error}.`);
         return null;

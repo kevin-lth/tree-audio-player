@@ -1,5 +1,5 @@
 const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonWebCharacters = /^[\w| |\+|\*|\/|\\|\-|\||=|°|@|!|?|:|,|.|%|~|'|`]+$/;
-const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, rangeMaxLength = 50;
+const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, rangeMaxLength = 50, etagMaxLength = 150;
 const validAuthorizationMethod = ['Bearer'];
 
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
@@ -126,6 +126,14 @@ export function newRangeHeader(range_header) {
     return { start, end, reversed };
 }
 
+export function newETagHeader(etag) {
+    if (etag === undefined || etag === null || etag === '' || etag.length > etagMaxLength) { return null; }
+    const array = etag.split('"');
+    if (array.length === 1 && array[0] === '*') { return '*'; }
+    else if (array.length === 3 && array[0] === '' && array[1].match(alphanumeric) && array[2] === '') { return array[1]; }
+    else { return null; }
+}
+
 // We still ask for the potential body to get the content-length (useful for HEAD requests)
 export function bodylessResponse(status_code, body, response) {
     response.setHeader('Content-Length', Buffer.byteLength(body));
@@ -141,13 +149,15 @@ export function bodyResponse(status_code, body, response) {
     response.end();
 }
 
+// For both functions below, we assume the stream is valid. We do not handle sending a 304 HTTP Code if the ETag is still valid here.
 export function bodylessStreamResponse(status_code, body, response) {
     response.setHeader('Accept-Ranges', 'bytes');
     if (body.partial) {
-        response.setHeader('Content-Range', `bytes ${body.start}-${body.end}/${body.total_size}`);
+        response.setHeader('Content-Range', `bytes ${body.range_start}-${body.range_end}/${body.total_size}`);
         response.setHeader('Content-Length', body.range_size);
     } else { response.setHeader('Content-Length', body.total_size); }
     response.setHeader('Content-Type', body.mime_type);
+    if (body.etag !== null) { response.setHeader('ETag', `"${body.etag}"`); }
     response.statusCode = status_code;
     response.end();
 }
@@ -155,10 +165,11 @@ export function bodylessStreamResponse(status_code, body, response) {
 export function bodyStreamResponse(status_code, body, request, response) {
     response.setHeader('Accept-Ranges', 'bytes');
     if (body.partial) {
-        response.setHeader('Content-Range', `bytes ${body.start}-${body.end}/${body.total_size}`);
+        response.setHeader('Content-Range', `bytes ${body.range_start}-${body.range_end}/${body.total_size}`);
         response.setHeader('Content-Length', body.range_size);
     } else { response.setHeader('Content-Length', body.total_size); }
     response.setHeader('Content-Type', body.mime_type);
+    if (body.etag !== null) { response.setHeader('ETag', `"${body.etag}"`); }
     response.statusCode = status_code;
     request.on('abort', () => {
         body.stream.destroy(); // To avoid the case where the server tries to send massive amount of unnecessary data, we abort the stream. (For instance, if someones requests 50 streams of music because he skipped ahead in his playlist)

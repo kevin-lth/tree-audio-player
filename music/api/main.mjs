@@ -1,10 +1,10 @@
 import { getAPI } from './api.mjs';
 
-import { newMimeType, newAcceptHeader, newRangeHeader, bodylessResponse, 
+import { newMimeType, newAcceptHeader, newRangeHeader, newETagHeader, bodylessResponse, 
     bodyResponse, bodylessStreamResponse, bodyStreamResponse, getToken, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newIDlessMusic, newInt, newBoolean } from '../common/models.mjs';
 
-const OK = 200, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406;
+const OK = 200, notModified = 304, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, preconditionFailed = 412;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
 const accept_image = newAcceptHeader('image/*'), accept_audio = newAcceptHeader('audio/*,application/octet-stream');
@@ -200,11 +200,13 @@ async function handleCategoryCover(method, token, parameters, request, response)
     switch (method) {
         case 'HEAD': case 'GET':
             const acceptTypes = newAcceptHeader(request.headers['accept']);
+            const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
             if (!acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: 'png' })) { bodylessResponse(notAcceptable, '', response); return; }
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
             api_response = await API.getCategoryCover(token, category_id, range);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
             else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
+            else if (ifNoneMatch === api_response.response.etag) { bodylessStreamResponse(notModified, api_response.response, response); } // The cached version is valid : no need to send it again.
             else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
             break;
         case 'POST':
@@ -328,12 +330,14 @@ async function handleMusicFile(method, token, parameters, request, response) {
     switch (method) {
         case 'HEAD': case 'GET':
             const acceptTypes = newAcceptHeader(request.headers['accept']);
+            const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
             if (!acceptTypes.isAccepted({ mimeType: 'audio', mimeSubtype: '*' })) { bodylessResponse(notAcceptable, '', response); return; }
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
             const format = parameters['format']; // If there is no value, it will be undefined - the API will pick the default format if this is the case
             api_response = await API.getMusicFile(token, music_id, format, range);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
             else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
+            else if (ifNoneMatch === api_response.response.etag) { bodylessStreamResponse(notModified, api_response.response, response); } // The cached version is valid : no need to send it again.
             else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
             break;
         case 'POST':
