@@ -121,7 +121,7 @@ export async function processMusicFile(file_name) {
 
 export async function getAsset(asset) {
     try {
-        return await __getStream(__getAssetURL(asset.url), null, asset.mime_type);
+        return await __getStream(__getAssetURL(asset.url), asset.etag, asset.mime_type);
     } catch (error) {
         console.log(`[File] getAsset failed ! asset = ${asset}, error = ${error}.`);
         return null;

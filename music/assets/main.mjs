@@ -1,15 +1,17 @@
-import { newMimeType, newAcceptHeader, bodylessResponse, bodyResponse, 
+import { newMimeType, newAcceptHeader, newETagHeader, bodylessResponse, bodyResponse, 
     bodylessStreamResponse, getToken, bodyStreamResponse, getRequestBody } from '../utils.mjs';
 import { getAsset } from '../file_utils.mjs';
 
 
-const OK = 200, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
+const OK = 200, notModified = 304, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, internalServerError = 500;
 
 const known_assets = {
-    'main.js': { url: "main.js", mime_type: "text/javascript" },
-    'main.css': { url: "main.css", mime_type: "text/css" },
-    'logo.svg': { url: "logo.svg", mime_type: "image/svg+xml" },
+    'main.js': { url: "main.js", mime_type: "text/javascript", etag: "01" },
+    'main.css': { url: "main.css", mime_type: "text/css", etag: "01" },
+    'logo.svg': { url: "logo.svg", mime_type: "image/svg+xml", etag: "01" },
 }
+
+const forceCacheControl = false;
 
 // Deals with a request.
 export async function handle(url, request, response) {
@@ -43,10 +45,12 @@ export async function handle(url, request, response) {
 async function streamAsset(asset, method, acceptTypes, request, response) {
     if (!acceptTypes.isAccepted(newMimeType(asset.mime_type))) { bodylessResponse(notAcceptable, '', response); }
     else {
-        response.setHeader('Cache-Control', 'public, max-age=86400'); // The max-age should be changed after all the assets are finished.
+        const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+        if (forceCacheControl) { response.setHeader('Cache-Control', 'public, max-age=31536000'); } // The max-age should be changed after all the assets are finished.
         const stream = await getAsset(asset);
         if (stream === null) { bodylessResponse(internalServerError, '', response); }
         else if (method === 'HEAD') { bodylessStreamResponse(OK, stream, response); }
+        else if (ifNoneMatch === asset.etag) { bodylessStreamResponse(notModified, stream, response); } // The cached version is valid : no need to send it again.
         else { bodyStreamResponse(OK, stream, request, response); }
     }
 }
