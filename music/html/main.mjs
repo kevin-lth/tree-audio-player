@@ -33,8 +33,6 @@ export async function handle(url, request, response) {
     
     const method = request.headers[':method'];
     const token = await getToken(request);
-    console.log(`[Request (HTML)] ${method} /${url.paths.join('/')}`);
-    console.log('[Request (HTML)] URL Parameters: ', url.parameters);
 
     let currentRoutes = routes;
     let processed = false;

@@ -22,8 +22,6 @@ export async function handle(url, request, response) {
     const method = request.headers[':method'];
     if (method !== 'HEAD' && method !== 'GET') { bodylessResponse(methodNotAllowed, '', response); }
     const token = await getToken(request);
-    console.log(`[Request (Assets)] ${method} /${url.paths.join('/')}`);
-    console.log('[Request (Assets)] URL Parameters: ', url.parameters);
 
     let currentRoutes = known_assets;
     let processed = false;

@@ -22,7 +22,7 @@ export async function handle(request, response) {
     // The URL is a mutable object, so if we want to log it we have to do it here
     console.log("[Request (Music)] Method:", request.method);
     console.log("[Request (Music)] Processed URL:", url);
-    console.log("[Request (Music)] Headers:", request.headers);
+    //console.log("[Request (Music)] Headers:", request.headers);
     
     switch (url.paths[0]) {
         case 'html': // This is the root

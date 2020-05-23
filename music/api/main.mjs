@@ -42,8 +42,6 @@ export async function handle(url, request, response) {
         
     const method = request.headers[':method'];
     const token = await getToken(request);
-    console.log(`[Request (API)] ${method} /${url.paths.join('/')}`);
-    console.log('[Request (API)] URL Parameters: ', url.parameters);
 
     let currentRoutes = routes;
     let processed = false;
