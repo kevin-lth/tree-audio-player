@@ -85,4 +85,3 @@ function logout() {
 
 window.addEventListener('DOMContentLoaded', updateAllEventListeners);
 
-
