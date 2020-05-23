@@ -9,6 +9,7 @@ const known_assets = {
     'main.js': { url: "main.js", mime_type: "text/javascript", etag: "01" },
     'main.css': { url: "main.css", mime_type: "text/css", etag: "01" },
     'logo.svg': { url: "logo.svg", mime_type: "image/svg+xml", etag: "01" },
+    'favicon.svg': { url: "favicon.svg", mime_type: "image/svg+xml", etag: "01" },
 }
 
 const forceCacheControl = false;

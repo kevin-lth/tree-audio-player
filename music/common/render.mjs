@@ -96,9 +96,9 @@ export function newRender(bindings) {
                         <title>${title_prefix} - ${title_suffix}</title>
                         <link rel="preload" href="/assets/main.css" as="style" />
                         <link rel="preload" href="/assets/main.js" as="script" />
-                        <link rel="preload" href="/assets/logo.svg" as="image" />
+                        <link rel="preload" href="/assets/logo.svg" as="image" type="image/svg+xml" />
                         
-                        <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
+                        <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
                         
                         <link rel="stylesheet" href="/assets/main.css" />
                     </head>
