@@ -92,8 +92,8 @@ export function newRender(bindings) {
     }
     
     // TODO: Complete
-    async function renderCategoryEdit(token) {
-        return await renderPage(token, 'category_personal', 'Edit Category', 'Edit');
+    async function renderCategoryEdit(token, id) {
+        return await renderPage(token, 'category_personal', 'Edit Category', 'Edit ID=' + id);
     }
     
     // TODO: Complete

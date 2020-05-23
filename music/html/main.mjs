@@ -83,23 +83,27 @@ async function handleCategoryDetails(method, token, parameters, request, respons
     else { bodyResponse(OK, await render.renderCategoryDetails(token, id), response); }
 }
 
-
-// TODO: Parameters
 async function handleCategoryEdit(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderCategoryEdit(token), response);
+    const id = newInt(parameters['id']);
+    if (id === null) { bodylessResponse(badRequest, '', response) }
+    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryEdit(token, id), response); }
+    else { bodyResponse(OK, await render.renderCategoryEdit(token, id), response); }
 }
 
 async function handlePlaylist(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderPlaylist(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderPlaylist(token), response); }
+    else { bodyResponse(OK, await render.renderPlaylist(token), response); }
 }
 
 
 async function handleSettings(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderSettings(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderSettings(token), response); }
+    else { bodyResponse(OK, await render.renderSettings(token), response); }
 }
 
 
 async function handleAbout(method, token, parameters, request, response) {
-    bodyResponse(OK, await render.renderAbout(token), response);
+    if (method === 'HEAD') { bodylessResponse(OK, await render.renderAbout(token), response); }
+    else { bodyResponse(OK, await render.renderAbout(token), response); }
 }
 
