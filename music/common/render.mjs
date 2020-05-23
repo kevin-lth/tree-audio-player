@@ -1,6 +1,7 @@
 export function newRender(bindings) {
 
-    const title_prefix = 'Tree Audio Player', unknown_error = 'An error occured. Please try again later.', not_logged_in = 'You are not logged in !', already_logged_in = 'You are already logged in !';
+    const title_prefix = 'Tree Audio Player', unknown_error = '<span class="error">An error occured. Please try again later.</span>', 
+        not_logged_in = '<span class="error">You are not logged in !</span>', already_logged_in = '<span class="error">You are already logged in !</span>';
     const OK = 200, unauthorized = 401, internalServerError = 500;
 
     // TODO: Do proper home
@@ -30,7 +31,19 @@ export function newRender(bindings) {
                 const categories = await bindings.getPublicCategories(token);
                 switch (categories.http_code) {
                     case OK:
-                        body = renderCategoryList(categories.response, session_status.response.username);
+                        let body_categories = '';
+                        for (let i = 0; i < categories.response.length; i++) {
+                            const category = categories.response[i], owned = (category.owner === session_status.response.username);
+                            const category_owned_class = owned ? 'owned-category' : '';
+                            const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
+                            body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
+                                                    <img src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo" />
+                                                    ${category_owned_img}
+                                                    <span>${category.full_name}</span>
+                                                    <button class="category-access" data-category-id="${category.id}">Request access</button>
+                                                </article>`;
+                        }
+                        body = `${body_categories}`
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -48,7 +61,21 @@ export function newRender(bindings) {
                 const categories = await bindings.getPersonalCategories(token);
                 switch (categories.http_code) {
                     case OK:
-                        body = renderCategoryList(categories.response, session_status.response.username);
+                        let body_categories = '';
+                        for (let i = 0; i < categories.response.length; i++) {
+                            const category = categories.response[i], owned = (category.owner === session_status.response.username);
+                            const category_owned_class = owned ? 'owned-category' : '';
+                            const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
+                            const category_revoke_button = owned ? '' : `<button class="category-revoke" data-category-id="${category.id}">Revoke access</button>`;
+                            body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
+                                                    <img src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo" />
+                                                    ${category_owned_img}
+                                                    <span>${category.full_name}</span>
+                                                    <button class="category-details" data-category-id="${category.id}">Details</button>
+                                                    ${category_revoke_button}
+                                                </article>`;
+                        }
+                        body = `${body_categories}`
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -165,13 +192,6 @@ export function newRender(bindings) {
     
     async function renderNavs(token, selected_page) {
         return { desktop: await renderDesktopNav(token, selected_page), mobile: await renderMobileNav(token, selected_page) }
-    }
-    
-    // These 2 functions don't perform checks on the session but merely renders the basic format for both a category and a music
-    function renderCategory(category, account_username) {
-        let ownership = '';
-        if (category.creator === account_username) { ownership = `<span>Owned</span>` }
-        return `<article id="category_${category.id}" data-category-id="${category.id}"><img src="/api/category/cover?id=${category.id}"></img>${ownership}</article>`;
     }
     
     function renderMusic(music) {
