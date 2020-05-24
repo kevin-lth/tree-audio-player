@@ -293,7 +293,7 @@ export async function newConnection() {
                 // We need to check that the token is valid and that it hasn't expired
                 const session = await statements.getSessionFromToken.get({ $token: token});
                 if (session === undefined) { return null };
-                const timestamp = Math.floor(new Date() / 1000);
+                const timestamp = Math.floor(Date.now() / 1000);
                 if (timestamp > session.expires) {
                     // The token has expired. We revoke the session to not clog the database, since we know it's now invalid.
                     revokeSession(session.session_id);

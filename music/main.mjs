@@ -18,9 +18,9 @@ export async function handle(request, response) {
         bodylessResponse(badRequest, '', response);
         return;
     }
-    
+    const date = new Date();
     // The URL is a mutable object, so if we want to log it we have to do it here
-    console.log(`[Request (Music)] (${request.connection.remoteAddress}) : ${request.method} ${request.url}`);
+    console.log(`[Request (Music)] (${request.connection.remoteAddress}, ${date.toLocaleDateString()} ${date.toLocaleTimeString()}) : ${request.method} ${request.url}`);
     //console.log("[Request (Music)] Headers:", request.headers);
     
     switch (url.paths[0]) {
