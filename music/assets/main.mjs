@@ -48,8 +48,8 @@ async function streamAsset(asset, method, acceptTypes, request, response) {
         if (forceCacheControl) { response.setHeader('Cache-Control', 'public, max-age=31536000'); } // The max-age should be changed after all the assets are finished.
         const stream = await getAsset(asset);
         if (stream === null) { bodylessResponse(internalServerError, '', response); }
-        else if (method === 'HEAD') { bodylessStreamResponse(OK, stream, response); }
         else if (ifNoneMatch === asset.etag) { bodylessStreamResponse(notModified, stream, response); } // The cached version is valid : no need to send it again.
+        else if (method === 'HEAD') { bodylessStreamResponse(OK, stream, response); }
         else { bodyStreamResponse(OK, stream, request, response); }
     }
 }

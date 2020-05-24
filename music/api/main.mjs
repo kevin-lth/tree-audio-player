@@ -4,6 +4,8 @@ import { newMimeType, newAcceptHeader, newRangeHeader, newETagHeader, bodylessRe
     bodyResponse, bodylessStreamResponse, bodyStreamResponse, getToken, getRequestBody } from './../utils.mjs'
 import { newAccount, newIDlessCategory, newIDlessMusic, newInt, newBoolean } from '../common/models.mjs';
 
+import crypto from 'crypto';
+
 const OK = 200, notModified = 304, badRequest = 400, notFound = 404, methodNotAllowed = 405, notAcceptable = 406, preconditionFailed = 412;
 const allowRegistration = true; // /!\ You should turn this off unless proper security is in place to avoid spam (e.g. email verification), this is only here for testing purposes.
 
@@ -162,8 +164,14 @@ async function handleCategoryResource(method, token, parameters, request, respon
             
             api_response = await API.getCategory(token, category_id, include_children, only_direct_children);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
-            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else {
+                const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+                const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
+                response.setHeader('ETag', `"${etag}"`);
+                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+                else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            }
             break;
         case 'POST': case 'PUT':
             const data = await getRequestBody(request);
@@ -204,8 +212,8 @@ async function handleCategoryCover(method, token, parameters, request, response)
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
             api_response = await API.getCategoryCover(token, category_id, range);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
             else if (ifNoneMatch === api_response.response.etag) { bodylessStreamResponse(notModified, api_response.response, response); } // The cached version is valid : no need to send it again.
+            else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
             else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
             break;
         case 'POST':
@@ -228,10 +236,16 @@ async function handleCategoryPublic(method, token, parameters, request, response
     let api_response;
     switch (method) {
         case 'HEAD': case 'GET':
-            api_response = await API.getPublicCategories(token);
+            api_response = await API.getPublicCategories(token); // Since the result can become big, we implement ETag by hashing the API Response to limit bandwidth usage on refreshes.
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
-            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else {
+                const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+                const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
+                response.setHeader('ETag', `"${etag}"`);
+                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+                else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            }
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
@@ -245,8 +259,14 @@ async function handleCategoryPersonal(method, token, parameters, request, respon
         case 'HEAD': case 'GET':
             api_response = await API.getPersonalCategories(token);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
-            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else {
+                const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+                const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
+                response.setHeader('ETag', `"${etag}"`);
+                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+                else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            }
             break;
         case 'POST':
             if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
@@ -269,8 +289,14 @@ async function handleCategoryOwned(method, token, parameters, request, response)
         case 'HEAD': case 'GET':
             api_response = await API.getOwnedCategories(token);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
-            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else {
+                const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+                const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
+                response.setHeader('ETag', `"${etag}"`);
+                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+                else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            }
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
@@ -286,8 +312,14 @@ async function handleCategoryMusic(method, token, parameters, request, response)
             
             api_response = await API.getAllCategoryMusics(token, category_id, include_all_children);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
-            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else {
+                const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+                const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
+                response.setHeader('ETag', `"${etag}"`);
+                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+                else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            }
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
@@ -303,8 +335,14 @@ async function handleMusicResource(method, token, parameters, request, response)
             
             api_response = await API.getMusic(token, music_id);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
-            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else {
+                const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
+                const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
+                response.setHeader('ETag', `"${etag}"`);
+                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+                else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            }
             break;
         case 'POST': case 'PUT':
             const data = await getRequestBody(request);
@@ -349,8 +387,8 @@ async function handleMusicFile(method, token, parameters, request, response) {
             const format = parameters['format']; // If there is no value, it will be undefined - the API will pick the default format if this is the case
             api_response = await API.getMusicFile(token, music_id, format, range);
             if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
-            else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
             else if (ifNoneMatch === api_response.response.etag) { bodylessStreamResponse(notModified, api_response.response, response); } // The cached version is valid : no need to send it again.
+            else if (method === 'HEAD') { bodylessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
             else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
             break;
         case 'POST':
