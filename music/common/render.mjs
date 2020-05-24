@@ -1,6 +1,6 @@
 export function newRender(bindings) {
 
-    const title_prefix = 'Tree Audio Player', unknown_error = '<span class="error">An error occured. Please try again later.</span>', 
+    const title_prefix = 'Tree Audio Player', unknown_error = '<span class="error">An error occured. Please try again later.</span>', unauthorized_error = '<span class="error">You are not allowed to access this resource.</span>',
         not_logged_in = '<span class="error">You are not logged in !</span>', already_logged_in = '<span class="error">You are already logged in !</span>';
     const OK = 200, unauthorized = 401, internalServerError = 500;
 
@@ -15,9 +15,9 @@ export function newRender(bindings) {
         if (session_status.http_code === OK) {
             if (session_status.response.username === null) {
             body = `<input type="text" id="login-username" maxlength="16" />
-                          <input type="password" id="login-password" maxlength="32" />
-                          <span id="login-message"></span>
-                          <span id="login-submit">Log In</span>`;
+                    <input type="password" id="login-password" maxlength="32" />
+                    <span id="login-message"></span>
+                    <span id="login-submit">Log In</span>`;
             } else { body = already_logged_in; }
         } else { body = unknown_error; }
         return await renderPage(token, 'home', 'Login', body);
@@ -31,20 +31,9 @@ export function newRender(bindings) {
                 const categories = await bindings.getPublicCategories(token);
                 switch (categories.http_code) {
                     case OK:
-                        let body_categories = '';
                         for (let i = 0; i < categories.response.length; i++) {
-                            const category = categories.response[i], owned = (category.creator === session_status.response.username);
-                            const category_owned_class = owned ? 'owned-category' : '';
-                            const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
-                            body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
-                                                    <img src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
-                                                    ${category_owned_img}
-                                                    <span>${category.full_name}</span>
-                                                    <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
-                                                    <button class="category-access" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request access</button>
-                                                </article>`;
+                            body += renderCategory(categories.response[i], session_status.response.username);
                         }
-                        body = `${body_categories}`
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -62,21 +51,9 @@ export function newRender(bindings) {
                 const categories = await bindings.getPersonalCategories(token);
                 switch (categories.http_code) {
                     case OK:
-                        let body_categories = '';
                         for (let i = 0; i < categories.response.length; i++) {
-                            const category = categories.response[i], owned = (category.creator === session_status.response.username);
-                            const category_owned_class = owned ? 'owned-category' : '';
-                            const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
-                            const category_revoke_button = owned ? '' : `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke access</button>`;
-                            body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
-                                                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
-                                                    ${category_owned_img}
-                                                    <span>${category.full_name}</span>
-                                                    <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
-                                                    ${category_revoke_button}
-                                                </article>`;
+                            body += renderCategory(categories.response[i], session_status.response.username);
                         }
-                        body = `${body_categories}`
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -88,7 +65,33 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderCategoryDetails(token, id) {
-        return await renderPage(token, 'category_personal', 'Category Details', 'Details ID=' + id);
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const category_result = await bindings.getCategory(token, id, true, false);
+                switch (category_result.http_code) {
+                    case OK:
+                        const category = category_result.response, owned = (category.creator === session_status.response.username);
+                        body = `<article title="${category.full_name}" class="category" data-category-id="${category.id}">
+                                    <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
+                                    <span class="category-full-name">Full Name : ${category.full_name}</span>
+                                    <span class="category-short-name">Short Name : ${category.short_name}</span>
+                                    <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
+                                    ${owned ? `<button class="category-revoke" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</button>` : ''}
+                                    ${category.is_public && !owned ? `<button class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
+                                    ${!owned ? `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
+                                </article>`;
+                        break;
+                    case unauthorized:
+                        body = unauthorized_error;
+                        break;
+                    default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_personal', 'Category Details', body);
     }
     
     // TODO: Complete
@@ -166,35 +169,26 @@ export function newRender(bindings) {
     // TODO ; add login/logout button
     async function renderHeader(token) {
         const session_status = await bindings.getSessionStatus(token);
-        let username = 'visitor';
-        let login_or_logout = '<a href="/html/login/" id="header-login">Login</a>';
-        if (session_status.http_code === OK && session_status.response.username !== null) {
-            username = `<span id="header-username">${session_status.response.username}</span>`;
-            login_or_logout = '<span id="header-logout">Logout</span>'; // We don't use a form with POST because that would redirect to the API, which we don't want. We will handle logout with javascript.
-        }
+        const logged = session_status.http_code === OK && session_status.response.username !== null;
+         // We don't use a form with POST because that would redirect to the whole page to the API, which we don't want. We will handle logout with javascript.
         return `<a href="/html" id="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" /></a>
                 <span id="header-title">Tree Audio Player</span>
-                <span id="header-hello">Hello, ${username} !</span>
-                ${login_or_logout}`;
+                <span id="header-hello">Hello, ${logged ? `<span id="header-username">${session_status.response.username}</span>` : 'visitor'} !</span>
+                ${!logged ? '<a href="/html/login/" id="header-login">Login</a>' : ''}
+                ${logged ? '<span id="header-logout">Logout</span>' : ''}`;
     }
     
     function renderNavElement(page, selected_page, href, svg_link, text, show_text) {
-        let nav_active = '', visible_text = '';
-        if (page === selected_page) { nav_active = 'nav-active'; }
-        if (show_text) { visible_text = text; }
-        
-        return `<li class="nav-element ${nav_active}"><a href="${href}"><img src="${svg_link}" alt="${text}" />${visible_text}</a></li>`;
+        return `<li class="nav-element ${page === selected_page ? 'nav-active' : ''}"><a href="${href}"><img src="${svg_link}" alt="${text}" />${show_text ? text : ''}</a></li>`;
     }
     
     // TODO: SVG Icons for nav elements
     async function renderNavElements(token, selected_page, show_text) {
         const session_status = await bindings.getSessionStatus(token);
-        let user_only_elements = '';
-        if (session_status.http_code === OK && session_status.response.username !== null) { 
-            user_only_elements = `${renderNavElement('category_public', selected_page, '/html/category/public/', '', 'Public Categories', show_text)}
-                                  ${renderNavElement('category_personal', selected_page, '/html/category/personal/', '', 'Personal Categories', show_text)}
-                                  ${renderNavElement('playlist', selected_page, '/html/playlist/', '', 'Playlist', show_text)}`;
-        }
+        const logged = session_status.http_code === OK && session_status.response.username !== null;
+        const user_only_elements = (logged) ? `${renderNavElement('category_public', selected_page, '/html/category/public/', '', 'Public Categories', show_text)}
+                                               ${renderNavElement('category_personal', selected_page, '/html/category/personal/', '', 'Personal Categories', show_text)}
+                                               ${renderNavElement('playlist', selected_page, '/html/playlist/', '', 'Playlist', show_text)}` : '';
         return `<ul>
                     ${renderNavElement('home', selected_page, '/html/', '', 'Home', show_text)}
                     ${user_only_elements}
@@ -215,16 +209,15 @@ export function newRender(bindings) {
         return { desktop: await renderDesktopNav(token, selected_page), mobile: await renderMobileNav(token, selected_page) }
     }
     
-    function renderCategoryList(categories, account_username) {
-        let result = '';
-        if (categories !== null) {
-            for (let i = 0; i < categories.length; i++) {
-                const category = categories[i];
-                result += `${renderCategory(category, account_username)}`;
-            }
-        }
-        return result;
-    } 
+    function renderCategory(category, account_username) {
+        const owned = (category.creator === account_username);
+        return `<article title="${category.full_name}" class="category ${owned ? 'owned-category' : ''}" data-category-id="${category.id}">
+                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
+                    ${owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''}
+                    <span class="category-full-name">${category.full_name}</span>
+                    <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
+                </article>`;
+    }
     
     // TODO : Footer will contain music player, will be handled by client
     async function renderFooter() {
