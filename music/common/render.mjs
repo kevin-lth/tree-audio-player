@@ -6,7 +6,8 @@ export function newRender(bindings) {
 
     // TODO: Do proper home
     async function renderHome(token) {
-        return await renderPage(token, 'home', 'Home', 'Hello World !');
+        const body = '<span class="welcome">Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren\'t logged in already, feel free to do so to access your music library. If you don\'t have an account, please contact an admin (see <a href="/html/about">About</a>).</span>';
+        return await renderPage(token, 'home', 'Home', body);
     }
     
     async function renderLogin(token) {
@@ -63,7 +64,6 @@ export function newRender(bindings) {
         return await renderPage(token, 'category_personal', 'Personal Categories', body);
     }
     
-    // TODO: Complete
     async function renderCategoryDetails(token, id) {
         const session_status = await bindings.getSessionStatus(token);
         let body = '';
