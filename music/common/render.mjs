@@ -15,10 +15,12 @@ export function newRender(bindings) {
         let body;
         if (session_status.http_code === OK) {
             if (session_status.response.username === null) {
-            body = `<input type="text" id="login-username" maxlength="16" />
-                    <input type="password" id="login-password" maxlength="32" />
-                    <span id="login-message"></span>
-                    <span id="login-submit">Log In</span>`;
+            body = `<form id="login-form">
+                        <input id="login-username" type="text" name="username" required="true" maxlength="16" />
+                        <input id="login-password" type="password" name="password" required="true" maxlength="32" />
+                    </form>
+                    <button id="login-submit" type="submit">Log In</button>
+                    <span id="login-message"></span>`;
             } else { body = already_logged_in; }
         } else { body = unknown_error; }
         return await renderPage(token, 'home', 'Login', body);
@@ -74,7 +76,7 @@ export function newRender(bindings) {
                     case OK:
                         const category = category_result.response, owned = (category.creator === session_status.response.username);
                         body = `<article title="${category.full_name}" class="category" data-category-id="${category.id}">
-                                    <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
+                                    <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" />
                                     <span class="category-full-name">Full Name : ${category.full_name}</span>
                                     <span class="category-short-name">Short Name : ${category.short_name}</span>
                                     <span class="category-creator">Created by : ${category.creator}</span>
@@ -113,7 +115,34 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderCategoryEdit(token, id) {
-        return await renderPage(token, 'category_personal', 'Edit Category', 'Edit ID=' + id);
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const category_result = await bindings.getCategory(token, id, true, false);
+                switch (category_result.http_code) {
+                    case OK:
+                        const category = category_result.response, owned = (category.creator === session_status.response.username);
+                        if (owned) {
+                            body = `<img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
+                                    <form id="category-form" data-category-id="${category.id}">
+                                        <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="true" maxlength="50" />
+                                        <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="true" maxlength="20" />
+                                        <input id="category-edit-is-public" type="checkbox" name="is_public" ${category.is_public ? 'checked="true"' : ''} />
+                                        <input id="category-edit-cover" type="file" accept="image/*" />
+                                    </form>
+                                    <button id="category-edit-submit" type="submit">Update</button>`;
+                        } else { body = unauthorized_error; }
+                        break;
+                    case unauthorized:
+                        body = unauthorized_error;
+                        break;
+                    default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_personal', 'Edit Category', body);
     }
     
     // TODO: Complete
@@ -231,7 +260,7 @@ export function newRender(bindings) {
     function renderCategory(category, account_username) {
         const owned = (category.creator === account_username);
         return `<article title="${category.full_name}" class="category ${owned ? 'owned-category' : ''}" data-category-id="${category.id}">
-                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
+                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" />
                     ${owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''}
                     <span class="category-full-name">${category.full_name}</span>
                     <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
@@ -253,7 +282,7 @@ export function newRender(bindings) {
                     <span class="music-duration">${music.duration}</span>
                 </article>`;
     }
-    
+
     // TODO : Footer will contain music player, will be handled by client
     async function renderFooter() {
         return ``;
