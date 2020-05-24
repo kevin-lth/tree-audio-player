@@ -77,11 +77,28 @@ export function newRender(bindings) {
                                     <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
                                     <span class="category-full-name">Full Name : ${category.full_name}</span>
                                     <span class="category-short-name">Short Name : ${category.short_name}</span>
+                                    <span class="category-creator">Created by : ${category.creator}</span>
                                     <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
-                                    ${owned ? `<button class="category-revoke" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</button>` : ''}
+                                    ${owned ? `<a class="category-revoke" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
                                     ${category.is_public && !owned ? `<button class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
                                     ${!owned ? `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
-                                </article>`;
+                                </article>
+                                <span class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</span>`;
+                        for (let i = 0; i < category.children.length; i++) {
+                            body += renderCategory(category.children[i], session_status.response.username);
+                        }
+                        const musics_result = await bindings.getAllCategoryMusics(token, id, false);
+                        switch (musics_result.http_code) {
+                            case OK:
+                                const musics = musics_result.response;
+                                body += `<span class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>)</span>`;
+                                for (let i = 0; i < musics.length; i++) {
+                                    body += renderMusic(musics[i]);
+                                }
+                                break;
+                            default:
+                                body = unknown_error;
+                        }
                         break;
                     case unauthorized:
                         body = unauthorized_error;
@@ -216,6 +233,22 @@ export function newRender(bindings) {
                     ${owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''}
                     <span class="category-full-name">${category.full_name}</span>
                     <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
+                </article>`;
+    }
+    
+    function renderMusic(music, category_short_name = null) {
+        let tags = '';
+        if (music.tags !== undefined) {
+            for (let i = 0; i < music.tags.length; i++) {
+                tags += `<span class="music-tag">${music.tags[i]}</span>`;
+            }
+        }
+        return `<article title="${music.full_name}" class="music" data-music-id="${music.id}">
+                    ${category_short_name !== null ? `<span class="music-prefix">${category_short_name}</span>` : ''}
+                    <span class="music-track">${music.track}</span>
+                    <span class="music-full-name">${music.full_name}</span>
+                    ${tags}
+                    <span class="music-duration">${music.duration}</span>
                 </article>`;
     }
     
