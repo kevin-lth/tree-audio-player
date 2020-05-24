@@ -4,7 +4,6 @@ export function newRender(bindings) {
         not_logged_in = '<span class="error">You are not logged in !</span>', already_logged_in = '<span class="error">You are already logged in !</span>';
     const OK = 200, unauthorized = 401, internalServerError = 500;
 
-    // TODO: Do proper home
     async function renderHome(token) {
         const body = '<div class="welcome">Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren\'t logged in already, feel free to do so to access your music library. If you don\'t have an account, please contact an admin (see <a href="/html/about">About</a>).</div>';
         return await renderPage(token, 'home', 'Home', body);
@@ -195,19 +194,16 @@ export function newRender(bindings) {
         return await renderPage(token, 'category_personal', 'New Music', 'New Parent_ID=' + parent_id);
     }
     
-    // TODO: Complete
     async function renderPlaylist(token) {
         const body = '<div class="playlist">You can select musics listed here. Musics will then be added to the music player on the bottom. To add categories here, please select them on either the public or personal categories pages.</div>';
         return await renderPage(token, 'playlist', 'Playlist', body);
     }
     
-    // TODO: Complete
     async function renderSettings(token) {
         const body = '<div class="settings">For now, there are no settings !</div>';
         return await renderPage(token, 'settings', 'Settings', body);
     }
     
-    // TODO: Complete
     async function renderAbout(token) {
         return await renderPage(token, 'about', 'About', '<div class="about">Powered by <a href="https://github.com/kevin-lth/tree-audio-player">Tree Audio Player</a><br />Code licensed under <a href="https://github.com/kevin-lth/tree-audio-player/blob/master/LICENSE">GPL 3.0</a></div>');
     }
@@ -244,7 +240,6 @@ export function newRender(bindings) {
                 </html>`;
     }
     
-    // TODO ; add login/logout button
     async function renderHeader(token) {
         const session_status = await bindings.getSessionStatus(token);
         const logged = session_status.http_code === OK && session_status.response.username !== null;
