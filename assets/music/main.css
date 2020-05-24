@@ -4,9 +4,10 @@
     
     main {
         max-height: calc(100vh - calc(calc(72px + 88px) + 40px));
-        width: calc(100% - calc(calc(256px + 60px) + 16px));
-        margin-left: calc(256px + 60px);
-        margin-bottom: calc(88px + 16px);
+        width: calc(100% - calc(calc(248px + 60px) + 16px));
+        padding-left: 60px;
+        margin-left: 248px;
+        margin-bottom: 88px;
      }
      
      footer {
@@ -22,8 +23,9 @@
     main {
         max-height: calc(100vh - calc(calc(72px + 68px) + 40px));
         width: calc(100% - calc(calc(82px + 16px) + 16px));
-        margin-left: calc(82px + 16px);
-        margin-bottom: calc(68px + 16px);
+        padding-left: 16px;
+        margin-left: 82px;
+        margin-bottom: 68px;
      }
      
      footer {
@@ -35,6 +37,7 @@
 
 body { 
     margin: 0px;
+    overflow: hidden;
     color: #000000;
     background-color: #ffffff;
 }
@@ -75,8 +78,12 @@ header, #desktop-nav, #mobile-nav {
 
 main {
     display: flex;
-    margin-top: calc(72px + 24px);
-    margin-right: 16px;
+    flex-wrap: wrap;
+    overflow-y: scroll;
+    padding-top: 24px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    margin-top: 72px;
 }
 
 footer {
