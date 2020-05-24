@@ -33,11 +33,11 @@ export function newRender(bindings) {
                     case OK:
                         let body_categories = '';
                         for (let i = 0; i < categories.response.length; i++) {
-                            const category = categories.response[i], owned = (category.owner === session_status.response.username);
+                            const category = categories.response[i], owned = (category.creator === session_status.response.username);
                             const category_owned_class = owned ? 'owned-category' : '';
                             const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
                             body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
-                                                    <img src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo" />
+                                                    <img src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
                                                     ${category_owned_img}
                                                     <span>${category.full_name}</span>
                                                     <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
@@ -64,12 +64,12 @@ export function newRender(bindings) {
                     case OK:
                         let body_categories = '';
                         for (let i = 0; i < categories.response.length; i++) {
-                            const category = categories.response[i], owned = (category.owner === session_status.response.username);
+                            const category = categories.response[i], owned = (category.creator === session_status.response.username);
                             const category_owned_class = owned ? 'owned-category' : '';
                             const category_owned_img = owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''; // TODO : img to show that category is owned
                             const category_revoke_button = owned ? '' : `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke access</button>`;
                             body_categories += `<article title="${category.full_name}" class="category ${category_owned_class}" data-category-id="${category.id}">
-                                                    <img src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Logo - Click to add to playlist" />
+                                                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Logo - Click to toggle from playlist" />
                                                     ${category_owned_img}
                                                     <span>${category.full_name}</span>
                                                     <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
