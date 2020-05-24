@@ -6,7 +6,7 @@ export function newRender(bindings) {
 
     // TODO: Do proper home
     async function renderHome(token) {
-        const body = '<span class="welcome">Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren\'t logged in already, feel free to do so to access your music library. If you don\'t have an account, please contact an admin (see <a href="/html/about">About</a>).</span>';
+        const body = '<div class="welcome">Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren\'t logged in already, feel free to do so to access your music library. If you don\'t have an account, please contact an admin (see <a href="/html/about">About</a>).</div>';
         return await renderPage(token, 'home', 'Home', body);
     }
     
@@ -138,17 +138,19 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderPlaylist(token) {
-        return await renderPage(token, 'playlist', 'Playlist', 'Playlist');
+        const body = '<div class="playlist">You can select musics listed here. Musics will then be added to the music player on the bottom. To add categories here, please select them on either the public or personal categories pages.</div>';
+        return await renderPage(token, 'playlist', 'Playlist', body);
     }
     
     // TODO: Complete
     async function renderSettings(token) {
-        return await renderPage(token, 'settings', 'Settings', 'Settings');
+        const body = '<div class="settings">For now, there are no settings !</div>';
+        return await renderPage(token, 'settings', 'Settings', body);
     }
     
     // TODO: Complete
     async function renderAbout(token) {
-        return await renderPage(token, 'about', 'About', '<p>Powered by <a href="https://github.com/kevin-lth/tree-audio-player">Tree Audio Player</a><br />Code licensed under <a href="https://github.com/kevin-lth/tree-audio-player/blob/master/LICENSE">GPL 3.0</a></p>');
+        return await renderPage(token, 'about', 'About', '<div class="about">Powered by <a href="https://github.com/kevin-lth/tree-audio-player">Tree Audio Player</a><br />Code licensed under <a href="https://github.com/kevin-lth/tree-audio-player/blob/master/LICENSE">GPL 3.0</a></div>');
     }
 
     // Internal render functions that are used by more specific functions for each page : they are the templates that will be filled with data.

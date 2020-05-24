@@ -3,7 +3,7 @@
     #mobile-nav { display: none; }
     
     main {
-        min-height: calc(100vh - calc(calc(72px + 88px) + 40px));
+        max-height: calc(100vh - calc(calc(72px + 88px) + 40px));
         width: calc(100% - calc(calc(256px + 60px) + 16px));
         margin-left: calc(256px + 60px);
         margin-bottom: calc(88px + 16px);
@@ -20,7 +20,7 @@
     #mobile-nav { display: block; }
     
     main {
-        min-height: calc(100vh - calc(calc(72px + 68px) + 40px));
+        max-height: calc(100vh - calc(calc(72px + 68px) + 40px));
         width: calc(100% - calc(calc(82px + 16px) + 16px));
         margin-left: calc(82px + 16px);
         margin-bottom: calc(68px + 16px);
