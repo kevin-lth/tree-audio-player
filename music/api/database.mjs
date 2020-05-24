@@ -143,6 +143,9 @@ export async function newConnection() {
                 getAllPersonalCategories: await db.prepare(
                     `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
                         WHERE category.creator_id=account.account_id AND (creator_id=$account_id OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id));`),
+                getAllOwnedCategories: await db.prepare(
+                    `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
+                        WHERE category.creator_id=account.account_id AND creator_id=$account_id;`),
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id=$category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
                 setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id=$category_id;'),
@@ -440,6 +443,23 @@ export async function newConnection() {
                     const categories = [];
                     for (let i = 0; i < personal_categories.length; i++) {
                         categories.push(__getCategoryObjectFromResult(personal_categories[i], undefined));
+                    }
+                    return categories;
+                }
+            } catch (error) {
+                console.log(`[Database] getAllPublicCategories failed ! error = ${error}`);
+                return null;
+            }
+        }
+        
+        async function getAllOwnedCategories(account_id) {
+            try {
+                let owned_categories = await statements.getAllOwnedCategories.all({ $account_id: account_id });
+                if (owned_categories === undefined) { return null; }
+                else { 
+                    const categories = [];
+                    for (let i = 0; i < owned_categories.length; i++) {
+                        categories.push(__getCategoryObjectFromResult(owned_categories[i], undefined));
                     }
                     return categories;
                 }

@@ -256,6 +256,17 @@ export function getAPI() {
         }
     }
     
+    async function getOwnedCategories(token) {
+        const check_session = await __checkSession(token);
+        if (check_session.response === null) { return check_session; }
+        else {
+            const session = check_session.response;
+            const categories = await connection.getAllOwnedCategories(session.account_id);
+            if (categories === null) { return newAPIResponse(null, internalServerError); }
+            else { return newAPIResponse(categories, OK); }
+        }
+    }
+    
     async function getAllCategoryMusics(token, category_id, include_all_children = false) {
         const check_session = await __checkSession(token);
         if (check_session.response === null) { return check_session; }

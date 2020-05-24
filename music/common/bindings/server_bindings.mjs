@@ -13,6 +13,8 @@ export function newBindings() {
     
     async function getPersonalCategories(token) { return await API.getPersonalCategories(token); }
     
+    async function getOwnedCategories(token) { return await API.getOwnedCategories(token); }
+    
     async function getAllCategoryMusics(token, category_id, include_all_children) { return await API.getAllCategoryMusics(token, category_id, include_all_children); }
     
     async function getMusic(token, music_id) { return await API.getMusic(token, music_id); }
