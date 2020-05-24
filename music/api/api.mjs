@@ -396,7 +396,7 @@ export function getAPI() {
         }
     }
     
-    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getAllCategoryMusics, addMusic, getMusic, updateMusic, deleteMusic, getMusicFile, setMusicFile };
+    return { getSessionStatus, getAccountProfile, registerAccount, loginAccount, logoutAccount, addCategory, getCategory, updateCategory, deleteCategory, getCategoryCover, setCategoryCover, getPublicCategories, addPersonalCategory, getPersonalCategories, revokePersonalCategory, getOwnedCategories, getAllCategoryMusics, addMusic, getMusic, updateMusic, deleteMusic, getMusicFile, setMusicFile };
 
 }
 

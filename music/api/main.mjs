@@ -22,6 +22,7 @@ let routes = {
         cover: handleCategoryCover,
         public: handleCategoryPublic,
         personal: handleCategoryPersonal,
+        owned: handleCategoryOwned,
         music: handleCategoryMusic,
     },
     music: {
@@ -256,6 +257,20 @@ async function handleCategoryPersonal(method, token, parameters, request, respon
             if (category_id === null) { bodylessResponse(badRequest, '', response); return; }
             api_response = await API.revokePersonalCategory(token, category_id);
             bodylessResponse(api_response.http_code, '', response);
+            break;
+        default:
+            bodylessResponse(methodNotAllowed, '', response);
+    }
+}
+
+async function handleCategoryOwned(method, token, parameters, request, response) {
+    let api_response;
+    switch (method) {
+        case 'HEAD': case 'GET':
+            api_response = await API.getOwnedCategories(token);
+            if (api_response.response === null) { bodylessResponse(api_response.http_code, '', response); }
+            else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             break;
         default:
             bodylessResponse(methodNotAllowed, '', response);
