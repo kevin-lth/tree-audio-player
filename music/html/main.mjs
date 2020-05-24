@@ -15,6 +15,12 @@ let routes = {
         personal: handleCategoryPersonal,
         details: handleCategoryDetails,
         edit: handleCategoryEdit,
+        new: handleCategoryNew,
+    },
+    music: {
+        details: handleMusicDetails,
+        edit: handleMusicEdit,
+        new: handleMusicNew,
     },
     playlist: handlePlaylist,
     settings: handleSettings,
@@ -88,6 +94,34 @@ async function handleCategoryEdit(method, token, parameters, request, response) 
     if (id === null) { bodylessResponse(badRequest, '', response) }
     else if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryEdit(token, id), response); }
     else { bodyResponse(OK, await render.renderCategoryEdit(token, id), response); }
+}
+
+async function handleCategoryNew(method, token, parameters, request, response) {
+    const parent_id = newInt(parameters['parent_id']);
+    if (id === null) { bodylessResponse(badRequest, '', response) }
+    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryNew(token, id), response); }
+    else { bodyResponse(OK, await render.renderCategoryNew(token, parent_id), response); }
+}
+
+async function handleMusicDetails(method, token, parameters, request, response) {
+    const id = newInt(parameters['id']);
+    if (id === null) { bodylessResponse(badRequest, '', response) }
+    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderMusicDetails(token, id), response); }
+    else { bodyResponse(OK, await render.renderMusicDetails(token, id), response); }
+}
+
+async function handleMusicEdit(method, token, parameters, request, response) {
+    const id = newInt(parameters['id']);
+    if (id === null) { bodylessResponse(badRequest, '', response) }
+    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderMusicEdit(token, id), response); }
+    else { bodyResponse(OK, await render.renderMusicEdit(token, id), response); }
+}
+
+async function handleMusicNew(method, token, parameters, request, response) {
+    const category_id = newInt(parameters['category_id']);
+    if (id === null) { bodylessResponse(badRequest, '', response) }
+    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderMusicNew(token, category_id), response); }
+    else { bodyResponse(OK, await render.renderMusicNew(token, category_id), response); }
 }
 
 async function handlePlaylist(method, token, parameters, request, response) {

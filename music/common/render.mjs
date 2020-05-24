@@ -97,6 +97,26 @@ export function newRender(bindings) {
     }
     
     // TODO: Complete
+    async function renderCategoryNew(token, parent_id) {
+        return await renderPage(token, 'category_personal', 'New Category', 'Parent_ID=' + parent_id);
+    }
+    
+    // TODO: Complete
+    async function renderMusicDetails(token, id) {
+        return await renderPage(token, 'category_personal', 'Music Details', 'Details ID=' + id);
+    }
+    
+    // TODO: Complete
+    async function renderMusicEdit(token, id) {
+        return await renderPage(token, 'category_personal', 'Edit Music', 'Edit ID=' + id);
+    }
+    
+    // TODO: Complete
+    async function renderMusicNew(token, category_id) {
+        return await renderPage(token, 'category_personal', 'New Music', 'New Parent_ID=' + parent_id);
+    }
+    
+    // TODO: Complete
     async function renderPlaylist(token) {
         return await renderPage(token, 'playlist', 'Playlist', 'Playlist');
     }
@@ -195,10 +215,6 @@ export function newRender(bindings) {
         return { desktop: await renderDesktopNav(token, selected_page), mobile: await renderMobileNav(token, selected_page) }
     }
     
-    function renderMusic(music) {
-        return ``;
-    }
-    
     function renderCategoryList(categories, account_username) {
         let result = '';
         if (categories !== null) {
@@ -215,7 +231,7 @@ export function newRender(bindings) {
         return ``;
     }
     
-    return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderPlaylist, renderSettings, renderAbout };
+    return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderCategoryNew, renderMusicDetails, renderMusicEdit, renderMusicNew, renderPlaylist, renderSettings, renderAbout };
 }
 
 
