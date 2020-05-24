@@ -79,7 +79,7 @@ header, #desktop-nav, #mobile-nav {
 main {
     display: flex;
     flex-wrap: wrap;
-    overflow-y: scroll;
+    overflow-y: auto;
     padding-top: 24px;
     padding-right: 16px;
     padding-bottom: 16px;
