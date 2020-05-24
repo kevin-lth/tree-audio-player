@@ -19,7 +19,7 @@ export function newBindings() {
     
     async function getMusic(token, music_id) { return await API.getMusic(token, music_id); }
 
-    return { getSessionStatus, getCategory, getPublicCategories, getPersonalCategories, getAllCategoryMusics, getMusic };
+    return { getSessionStatus, getCategory, getPublicCategories, getPersonalCategories, getOwnedCategories, getAllCategoryMusics, getMusic };
 
 }
 

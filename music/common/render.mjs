@@ -15,12 +15,14 @@ export function newRender(bindings) {
         let body;
         if (session_status.http_code === OK) {
             if (session_status.response.username === null) {
-            body = `<form id="login-form">
-                        <input id="login-username" type="text" name="username" required="true" maxlength="16" />
-                        <input id="login-password" type="password" name="password" required="true" maxlength="32" />
-                    </form>
-                    <button id="login-submit" type="submit">Log In</button>
-                    <span id="login-message"></span>`;
+            body = `<div class="login">
+                        <form id="login-form">
+                            <input id="login-username" type="text" name="username" required="true" maxlength="16" />
+                            <input id="login-password" type="password" name="password" required="true" maxlength="32" />
+                        </form>
+                        <button id="login-submit" type="submit">Log In</button>
+                        <span id="login-message"></span>
+                    </div>`;
             } else { body = already_logged_in; }
         } else { body = unknown_error; }
         return await renderPage(token, 'home', 'Login', body);
@@ -34,9 +36,11 @@ export function newRender(bindings) {
                 const categories = await bindings.getPublicCategories(token);
                 switch (categories.http_code) {
                     case OK:
+                        let body_categories = '';
                         for (let i = 0; i < categories.response.length; i++) {
-                            body += renderCategory(categories.response[i], session_status.response.username);
+                            body_categories += renderCategory(categories.response[i], session_status.response.username);
                         }
+                        body = `<div class="category-list category-public">${body_categories}</div>`;
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -54,9 +58,11 @@ export function newRender(bindings) {
                 const categories = await bindings.getPersonalCategories(token);
                 switch (categories.http_code) {
                     case OK:
+                        let body_categories = '';
                         for (let i = 0; i < categories.response.length; i++) {
-                            body += renderCategory(categories.response[i], session_status.response.username);
+                            body_categories += renderCategory(categories.response[i], session_status.response.username);
                         }
+                        body = `<div class="category-list category-private">${body_categories}</div>`;
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -75,28 +81,34 @@ export function newRender(bindings) {
                 switch (category_result.http_code) {
                     case OK:
                         const category = category_result.response, owned = (category.creator === session_status.response.username);
-                        body = `<article title="${category.full_name}" class="category" data-category-id="${category.id}">
-                                    <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" />
-                                    <span class="category-full-name">Full Name : ${category.full_name}</span>
-                                    <span class="category-short-name">Short Name : ${category.short_name}</span>
-                                    <span class="category-creator">Created by : ${category.creator}</span>
-                                    <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
-                                    ${owned ? `<a class="category-revoke" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
-                                    ${category.is_public && !owned ? `<button class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
-                                    ${!owned ? `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
-                                </article>
-                                <span class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</span>`;
+                        let body_children = '';
                         for (let i = 0; i < category.children.length; i++) {
-                            body += renderCategory(category.children[i], session_status.response.username);
+                            body_children += renderCategory(category.children[i], session_status.response.username);
                         }
                         const musics_result = await bindings.getAllCategoryMusics(token, id, false);
                         switch (musics_result.http_code) {
                             case OK:
                                 const musics = musics_result.response;
-                                body += `<span class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>)</span>`;
+                                let body_musics = '';
                                 for (let i = 0; i < musics.length; i++) {
-                                    body += renderMusic(musics[i]);
+                                    body_musics += renderMusic(musics[i]);
                                 }
+                                body = `<div class="category-details">
+                                            <article title="${category.full_name}" class="category" data-category-id="${category.id}">
+                                                <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" />
+                                                <span class="category-full-name">Full Name : ${category.full_name}</span>
+                                                <span class="category-short-name">Short Name : ${category.short_name}</span>
+                                                <span class="category-creator">Created by : ${category.creator}</span>
+                                                <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
+                                                ${owned ? `<a class="category-revoke" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
+                                                ${category.is_public && !owned ? `<button class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
+                                                ${!owned ? `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
+                                            </article>
+                                            <span class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</span>
+                                            <div class="category-list">${body_children}</div>
+                                            <span class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>) :</span>
+                                            <div class="music-list">${body_musics}</div>
+                                        </div>`;
                                 break;
                             default:
                                 body = unknown_error;
@@ -113,7 +125,6 @@ export function newRender(bindings) {
         return await renderPage(token, 'category_personal', 'Category Details', body);
     }
     
-    // TODO: Complete
     async function renderCategoryEdit(token, id) {
         const session_status = await bindings.getSessionStatus(token);
         let body = '';
@@ -124,14 +135,33 @@ export function newRender(bindings) {
                     case OK:
                         const category = category_result.response, owned = (category.creator === session_status.response.username);
                         if (owned) {
-                            body = `<img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
-                                    <form id="category-form" data-category-id="${category.id}">
-                                        <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="true" maxlength="50" />
-                                        <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="true" maxlength="20" />
-                                        <input id="category-edit-is-public" type="checkbox" name="is_public" ${category.is_public ? 'checked="true"' : ''} />
-                                        <input id="category-edit-cover" type="file" accept="image/*" />
-                                    </form>
-                                    <button id="category-edit-submit" type="submit">Update</button>`;
+                            const owned_categories_result = await bindings.getOwnedCategories(token);
+                            switch (owned_categories_result.http_code) {
+                                case OK:
+                                    const owned_categories = owned_categories_result.response;
+                                    let parent_options = `<option value="" selected="true">Do not change</option>
+                                                          <option value="-1">No parent category</option>`;
+                                    for (let i = 0; i < owned_categories.length; i++) {
+                                        if (owned_categories[i].id !== id) { parent_options += `<option value="${owned_categories[i].id}">${owned_categories[i].full_name}</option>`; }
+                                    }
+                                    body = `<div class="category-edit">
+                                                <img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
+                                                <form id="category-form">
+                                                    <input id="category-edit-id" type="hidden" name="id" value="${category.id}" /> <!-- This field will not be sent as is by the client -->
+                                                    <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="true" maxlength="50" />
+                                                    <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="true" maxlength="20" />
+                                                    <select id="category-edit-parent" name="parent_id">
+                                                        ${parent_options}
+                                                    </select>
+                                                    <input id="category-edit-is-public" type="checkbox" name="is_public" ${category.is_public ? 'checked="true"' : ''} />
+                                                    <input id="category-edit-cover" type="file" accept="image/*" />
+                                                </form>
+                                                <button id="category-edit-submit" type="submit">Update</button>
+                                            </div>`;
+                                    break;
+                                default:
+                                    body = unknown_error;
+                            }
                         } else { body = unauthorized_error; }
                         break;
                     case unauthorized:
