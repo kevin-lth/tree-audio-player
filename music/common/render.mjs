@@ -1,6 +1,7 @@
 export function newRender(bindings) {
 
-    const title_prefix = 'Tree Audio Player', unknown_error = '<span class="error">An error occured. Please try again later.</span>', unauthorized_error = '<span class="error">You are not allowed to access this resource.</span>',
+    const title_prefix = 'Tree Audio Player'
+    const unknown_error = '<span class="error">An error occured. Please try again later.</span>', unauthorized_error = '<span class="error">You are not allowed to access this resource.</span>',
         not_logged_in = '<span class="error">You are not logged in !</span>', already_logged_in = '<span class="error">You are already logged in !</span>';
     const OK = 200, unauthorized = 401, internalServerError = 500;
 
@@ -145,7 +146,7 @@ export function newRender(bindings) {
                                     }
                                     body = `<div class="category-edit">
                                                 <img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
-                                                <form id="category-form">
+                                                <form id="category-edit-form">
                                                     <input id="category-edit-id" type="hidden" name="id" value="${category.id}" /> <!-- This field will not be sent as is by the client -->
                                                     <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="true" maxlength="50" />
                                                     <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="true" maxlength="20" />
@@ -174,9 +175,38 @@ export function newRender(bindings) {
         return await renderPage(token, 'category_personal', 'Edit Category', body);
     }
     
-    // TODO: Complete
     async function renderCategoryNew(token, parent_id) {
-        return await renderPage(token, 'category_personal', 'New Category', 'Parent_ID=' + parent_id);
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const owned_categories_result = await bindings.getOwnedCategories(token);
+                switch (owned_categories_result.http_code) {
+                    case OK:
+                        const owned_categories = owned_categories_result.response;
+                        let parent_options = `<option value="-1" ${parent_id === -1 ? 'selected="true"' : ''}>No parent category</option>`;
+                        for (let i = 0; i < owned_categories.length; i++) {
+                            parent_options += `<option value="${owned_categories[i].id}" ${parent_id === owned_categories[i].id ? 'selected="true"' : ''}>${owned_categories[i].full_name}</option>`;
+                        }
+                        body = `<div class="category-new">
+                                    <form id="category-new-form">
+                                        <input id="category-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
+                                        <input id="category-new-short-name" type="text" name="short_name" required="true" maxlength="20" />
+                                        <select id="category-new-parent" name="parent_id">
+                                            ${parent_options}
+                                        </select>
+                                        <input id="category-new-is-public" type="checkbox" name="is_public" />
+                                        <input id="category-new-cover" type="file" accept="image/*" required="true" />
+                                    </form>
+                                    <button id="category-new-submit" type="submit">Add</button>
+                                </div>`;
+                        break;
+                    default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_personal', 'New Category', body);
     }
     
     // TODO: Complete

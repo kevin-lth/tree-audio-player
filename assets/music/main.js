@@ -62,11 +62,10 @@ function updateAllEventListeners() {
 function login(event) {
     event.preventDefault();
     const login_form = document.querySelector('#login-form');
-    if (login_form !== null) {
+    if (login_form !== null && login_form.checkValidity()) {
         // We will not do any checks here. The service worker will do a check if he is loaded, the server will always check
         const form_data = new FormData(login_form);
-        sendRequestToAPI('POST', '/api/account/login/', form_data, gotoHome, failedLogin);
-        
+        sendRequestToAPI('POST', '/api/account/login/', form_data, gotoHome, failedLogin);  
     }
 }
 
