@@ -1,8 +1,8 @@
 export function newRender(bindings) {
 
     const title_prefix = 'Tree Audio Player'
-    const unknown_error = '<span class="error">An error occured. Please try again later.</span>', unauthorized_error = '<span class="error">You are not allowed to access this resource.</span>',
-        not_logged_in = '<span class="error">You are not logged in !</span>', already_logged_in = '<span class="error">You are already logged in !</span>';
+    const unknown_error = '<div class="error">An error occured. Please try again later.</div>', unauthorized_error = '<div class="error">You are not allowed to access this resource.</div>',
+        not_logged_in = '<div class="error">You are not logged in !</div>', already_logged_in = '<div class="error">You are already logged in !</div>';
     const OK = 200, unauthorized = 401, internalServerError = 500;
 
     async function renderHome(token) {
@@ -227,22 +227,18 @@ export function newRender(bindings) {
                 const category_result = await bindings.getCategory(token, category_id, false, true);
                 switch (category_result.http_code) {
                     case OK:
-                        const owned_categories = owned_categories_result.response;
-                        let parent_options = `<option value="-1" ${parent_id === -1 ? 'selected="true"' : ''}>No parent category</option>`;
-                        for (let i = 0; i < owned_categories.length; i++) {
-                            parent_options += `<option value="${owned_categories[i].id}" ${parent_id === owned_categories[i].id ? 'selected="true"' : ''}>${owned_categories[i].full_name}</option>`;
-                        }
-                        body = `<div class="category-new">
-                                    <form id="category-new-form">
-                                        <input id="category-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
-                                        <input id="category-new-short-name" type="text" name="short_name" required="true" maxlength="20" />
-                                        <select id="category-new-parent" name="parent_id">
-                                            ${parent_options}
-                                        </select>
-                                        <input id="category-new-is-public" type="checkbox" name="is_public" value="true" />
-                                        <input id="category-new-cover" type="file" name="cover" accept="image/*" required="true" />
+                        body = `<div class="music-new">
+                                    <form id="music-new-form">
+                                        <input id="music-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
+                                        <input type="hidden" name="category_id" value="${category_id}" />
+                                        <input id="music-new-track" type="number" name="track" required="true" min="1" />
+                                        <input id="music-new-file" type="file" name="file" accept="audio/*" required="true" />
                                     </form>
-                                    <button id="category-new-submit" type="submit">Add</button>
+                                    <div id="music-new-tags" class="music-tags">
+                                        <input id="music-new-tag-input" type="text" />
+                                        <button id="music-new-tag-add">Add Tag</button>
+                                    </div>
+                                    <button id="music-new-submit" type="submit">Add</button>
                                 </div>`;
                         break;
                     case unauthorized:
@@ -253,7 +249,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'New Music', 'New Parent_ID=' + parent_id);
+        return await renderPage(token, 'category_personal', 'New Music', body);
     }
     
     async function renderPlaylist(token) {

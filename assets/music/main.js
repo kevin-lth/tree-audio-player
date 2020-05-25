@@ -62,6 +62,9 @@ function updateAllEventListeners() {
     updateEventListener('.category-revoke', 'click', revokeCategoryAccess);
     updateEventListener('#category-edit-submit', 'click', editCategory);
     updateEventListener('#category-new-submit', 'click', newCategory);
+    
+    updateEventListener('#music-new-tag-add', 'click', addTag);
+    updateEventListener('#music-new-submit', 'click', newMusic);
 };
 
 function login(event) {
@@ -117,13 +120,52 @@ function newCategory(event) {
         else { // We need to remove the cover from the form for now. We will send it separately.
             const cover_form = new FormData();
             cover_form.set('cover', form_data.get('cover'));
+            form_data.delete('cover');
             function afterSuccessfulPost(response) { 
                 response.json().then( (json) => {
                     sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, refresh, refresh);
                 });
             }
-            form_data.delete('cover');
             sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, nothing); // TODO : An error occured
+        }
+    }
+}
+
+function addTag() {
+    const input = document.querySelector('#music-new-tag-input');
+    if (input !== null) {
+        const tag = document.createElement('span');
+        tag.classList.add('music-new-tag');
+        tag.classList.add('music-tag');
+        tag.dataset.tag = input.value;
+        tag.textContent = input.value;
+        tag.addEventListener('click', removeTag);
+        input.parentNode.prepend(tag);
+    }
+}
+
+function removeTag(event) {
+    event.target.remove();
+}
+
+function newMusic(event) {    const form = document.querySelector('#music-new-form');
+    if (form !== null) {
+        const form_data = new FormData(form);
+        // The tags are sent as a stringified Array
+        const tags = [], span_tags = document.querySelectorAll('.music-new-tag');
+        for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
+        form_data.append('tags', JSON.stringify(tags));
+        if (form_data.get('file') === undefined) { sendRequestToAPI('POST', '/api/music/resource', form_data, refresh, refresh); }
+        else { // We need to remove the cover from the form for now. We will send it separately.
+            const file_form = new FormData();
+            file_form.set('file', form_data.get('file'));
+            form_data.delete('file');
+            function afterSuccessfulPost(response) { 
+                response.json().then( (json) => {
+                    sendRequestToAPI('POST', '/api/music/file?id=' + json.id, file_form, refresh, refresh);
+                });
+            }
+            sendRequestToAPI('POST', '/api/music/resource', form_data, afterSuccessfulPost, nothing); // TODO : An error occured
         }
     }
 }
