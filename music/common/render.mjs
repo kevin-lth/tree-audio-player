@@ -100,9 +100,9 @@ export function newRender(bindings) {
                                                 <span class="category-short-name">Short Name : ${category.short_name}</span>
                                                 <span class="category-creator">Created by : ${category.creator}</span>
                                                 <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
-                                                ${owned ? `<a class="category-revoke" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
-                                                ${category.is_public && !owned ? `<button class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
-                                                ${!owned ? `<button class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
+                                                ${owned ? `<a id="category-edit-${category.id}" class="category-edit" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
+                                                ${category.is_public && !owned ? `<button id="category-request-${category.id}" class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
+                                                ${!owned ? `<button id="category-revoke-${category.id}" class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
                                             </article>
                                             <span class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</span>
                                             <div class="category-list">${body_children}</div>
@@ -146,15 +146,14 @@ export function newRender(bindings) {
                                     }
                                     body = `<div class="category-edit">
                                                 <img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
-                                                <form id="category-edit-form">
-                                                    <input id="category-edit-id" type="hidden" name="id" value="${category.id}" /> <!-- This field will not be sent as is by the client -->
+                                                <form id="category-edit-form" data-category-id="${category.id}">
                                                     <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="true" maxlength="50" />
                                                     <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="true" maxlength="20" />
                                                     <select id="category-edit-parent" name="parent_id">
                                                         ${parent_options}
                                                     </select>
-                                                    <input id="category-edit-is-public" type="checkbox" name="is_public" ${category.is_public ? 'checked="true"' : ''} />
-                                                    <input id="category-edit-cover" type="file" accept="image/*" />
+                                                    <input id="category-edit-is-public" type="checkbox" name="is_public" value="true" ${category.is_public ? 'checked="true"' : ''} />
+                                                    <input id="category-edit-cover" type="file" name="cover" accept="image/*" />
                                                 </form>
                                                 <button id="category-edit-submit" type="submit">Update</button>
                                             </div>`;
@@ -195,8 +194,8 @@ export function newRender(bindings) {
                                         <select id="category-new-parent" name="parent_id">
                                             ${parent_options}
                                         </select>
-                                        <input id="category-new-is-public" type="checkbox" name="is_public" />
-                                        <input id="category-new-cover" type="file" accept="image/*" required="true" />
+                                        <input id="category-new-is-public" type="checkbox" name="is_public" value="true" />
+                                        <input id="category-new-cover" type="file" name="cover" accept="image/*" required="true" />
                                     </form>
                                     <button id="category-new-submit" type="submit">Add</button>
                                 </div>`;
