@@ -33,7 +33,7 @@ export function newIDlessMusic(full_name, category_id, track, tags) {
     if (full_name !== undefined && full_name !== null && full_name.match(alphanumericAndNonWebCharacters) && full_name.length <= 50
       && checked_category_id !== null && checked_track !== null && checked_track >= 1 && Array.isArray(tags)) {
         for (let i = 0; i < tags.length; i++) {
-            if (!tags[i].match(alphanumericAndNonWebCharacters)) { return null; }
+            if (tags[i] === null || tags[i] === undefined || !tags[i].match(alphanumericAndNonWebCharacters)) { return null; }
             else { checked_tags.push(tags[i].trim()); }
         }
         return { full_name, category_id: checked_category_id, track: checked_track, tags: checked_tags };
@@ -48,7 +48,7 @@ export function newMusic(id, full_name, category_id, track, duration, tags, form
         if (formats === undefined || Array.isArray(formats)) {
             if (formats !== undefined) {
                 for (let i = 0; i < formats.length; i++) {
-                    if (!formats[i].match(alphanumericAndNonWebCharacters)) { return null; }
+                    if (formats[i] === null || formats[i] === undefined || !formats[i].match(alphanumericAndNonWebCharacters)) { return null; }
                     else { checked_formats.push(formats[i].trim()); }
                 }
             }
