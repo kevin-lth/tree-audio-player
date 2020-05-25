@@ -77,7 +77,7 @@ export function newRender(bindings) {
         let body = '';
         if (session_status.http_code === OK) {
             if (session_status.response.username !== null) {
-                const category_result = await bindings.getCategory(token, id, true, false);
+                const category_result = await bindings.getCategory(token, id, true, true);
                 switch (category_result.http_code) {
                     case OK:
                         const category = category_result.response, owned = (category.creator === session_status.response.username);
@@ -130,7 +130,7 @@ export function newRender(bindings) {
         let body = '';
         if (session_status.http_code === OK) {
             if (session_status.response.username !== null) {
-                const category_result = await bindings.getCategory(token, id, true, false);
+                const category_result = await bindings.getCategory(token, id, false, true);
                 switch (category_result.http_code) {
                     case OK:
                         const category = category_result.response, owned = (category.creator === session_status.response.username);
@@ -220,11 +220,48 @@ export function newRender(bindings) {
     
     // TODO: Complete
     async function renderMusicNew(token, category_id) {
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const category_result = await bindings.getCategory(token, category_id, false, true);
+                switch (category_result.http_code) {
+                    case OK:
+                        const owned_categories = owned_categories_result.response;
+                        let parent_options = `<option value="-1" ${parent_id === -1 ? 'selected="true"' : ''}>No parent category</option>`;
+                        for (let i = 0; i < owned_categories.length; i++) {
+                            parent_options += `<option value="${owned_categories[i].id}" ${parent_id === owned_categories[i].id ? 'selected="true"' : ''}>${owned_categories[i].full_name}</option>`;
+                        }
+                        body = `<div class="category-new">
+                                    <form id="category-new-form">
+                                        <input id="category-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
+                                        <input id="category-new-short-name" type="text" name="short_name" required="true" maxlength="20" />
+                                        <select id="category-new-parent" name="parent_id">
+                                            ${parent_options}
+                                        </select>
+                                        <input id="category-new-is-public" type="checkbox" name="is_public" value="true" />
+                                        <input id="category-new-cover" type="file" name="cover" accept="image/*" required="true" />
+                                    </form>
+                                    <button id="category-new-submit" type="submit">Add</button>
+                                </div>`;
+                        break;
+                    case unauthorized:
+                        body = unauthorized_error;
+                        break;
+                    default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
         return await renderPage(token, 'category_personal', 'New Music', 'New Parent_ID=' + parent_id);
     }
     
     async function renderPlaylist(token) {
-        const body = '<div class="playlist">You can select musics listed here. Musics will then be added to the music player on the bottom. To add categories here, please select them on either the public or personal categories pages.</div>';
+        const body = `<div class="playlist">
+                          <div class="playlist-header">
+                              You can select musics listed here. Musics will then be added to the music player on the bottom. To add categories here, please select them on either the public or personal categories pages.
+                          </div>
+                      </div>`;
         return await renderPage(token, 'playlist', 'Playlist', body);
     }
     
