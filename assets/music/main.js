@@ -63,7 +63,10 @@ function updateAllEventListeners() {
     updateEventListener('#category-edit-submit', 'click', editCategory);
     updateEventListener('#category-new-submit', 'click', newCategory);
     
-    updateEventListener('#music-new-tag-add', 'click', addTag);
+    updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
+    updateEventListener('#music-edit-tag-add', 'click', addEditTag);
+    updateEventListener('#music-edit-submit', 'click', editMusic);
+    updateEventListener('#music-new-tag-add', 'click', addNewTag);
     updateEventListener('#music-new-submit', 'click', newMusic);
 };
 
@@ -98,7 +101,7 @@ function editCategory(event) {
         if (id !== undefined) {
             if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
             if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-            if (form_data.get('cover') === undefined) { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, refresh, refresh); }
+            if (form_data.get('cover').name === '') { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, refresh, refresh); }
             else { // We need to remove the cover from the form for now. We will send it separately.
                 const cover_form = new FormData();
                 cover_form.set('cover', form_data.get('cover'));
@@ -116,7 +119,7 @@ function newCategory(event) {
         const form_data = new FormData(form);
         if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
         if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-        if (form_data.get('cover') === undefined) { sendRequestToAPI('POST', '/api/category/resource', form_data, refresh, refresh); }
+        if (form_data.get('cover').name === '') { sendRequestToAPI('POST', '/api/category/resource', form_data, refresh, refresh); }
         else { // We need to remove the cover from the form for now. We will send it separately.
             const cover_form = new FormData();
             cover_form.set('cover', form_data.get('cover'));
@@ -131,16 +134,20 @@ function newCategory(event) {
     }
 }
 
-function addTag() {
-    const input = document.querySelector('#music-new-tag-input');
+function addEditTag() { addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
+
+function addNewTag() { addTag(document.querySelector('#music-new-tag-input'), 'music-new-tag'); }
+
+function addTag(input, unique_class) {
     if (input !== null) {
         const tag = document.createElement('span');
-        tag.classList.add('music-new-tag');
+        tag.classList.add(unique_class);
         tag.classList.add('music-tag');
         tag.dataset.tag = input.value;
         tag.textContent = input.value;
         tag.addEventListener('click', removeTag);
         input.parentNode.prepend(tag);
+        input.value = '';
     }
 }
 
@@ -148,14 +155,35 @@ function removeTag(event) {
     event.target.remove();
 }
 
-function newMusic(event) {    const form = document.querySelector('#music-new-form');
+function editMusic(event) {
+    const form = document.querySelector('#music-edit-form');
+    if (form !== null) {
+        const id = form.dataset.musicId, form_data = new FormData(form);
+        // The tags are sent as a stringified Array
+        const tags = [], span_tags = document.querySelectorAll('.music-edit-tag');
+        for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
+        form_data.append('tags', JSON.stringify(tags));
+        console.log(form_data, form_data.get('file'));
+        if (form_data.get('file').name === '') { sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, refresh, refresh); }
+        else { // We need to remove the cover from the form for now. We will send it separately.
+            const file_form = new FormData();
+            file_form.set('file', form_data.get('file'));
+            form_data.delete('file');
+            sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, nothing, nothing); // TODO : An error occured
+            sendRequestToAPI('POST', '/api/music/file?id=' + id, file_form, refresh, refresh);
+        }
+    }
+}
+
+function newMusic(event) {
+    const form = document.querySelector('#music-new-form');
     if (form !== null) {
         const form_data = new FormData(form);
         // The tags are sent as a stringified Array
         const tags = [], span_tags = document.querySelectorAll('.music-new-tag');
         for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
         form_data.append('tags', JSON.stringify(tags));
-        if (form_data.get('file') === undefined) { sendRequestToAPI('POST', '/api/music/resource', form_data, refresh, refresh); }
+        if (form_data.get('file').name === '') { sendRequestToAPI('POST', '/api/music/resource', form_data, refresh, refresh); }
         else { // We need to remove the cover from the form for now. We will send it separately.
             const file_form = new FormData();
             file_form.set('file', form_data.get('file'));

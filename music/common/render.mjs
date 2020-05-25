@@ -208,17 +208,47 @@ export function newRender(bindings) {
         return await renderPage(token, 'category_personal', 'New Category', body);
     }
     
-    // TODO: Complete
-    async function renderMusicDetails(token, id) {
-        return await renderPage(token, 'category_personal', 'Music Details', 'Details ID=' + id);
-    }
-    
-    // TODO: Complete
     async function renderMusicEdit(token, id) {
-        return await renderPage(token, 'category_personal', 'Edit Music', 'Edit ID=' + id);
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const music_result = await bindings.getMusic(token, id);
+                switch (music_result.http_code) {
+                    case OK:
+                        const music = music_result.response;
+                        let body_tags = '';
+                        if (music.tags !== undefined) {
+                            for (let i = 0; i < music.tags.length; i++) {
+                                body_tags += `<span class="music-edit-tag music-tag" data-tag="${music.tags[i]}">${music.tags[i]}</span>`;
+                            }
+                        }
+                        body = `<div class="music-edit">
+                                    <form id="music-edit-form" data-music-id="${music.id}">
+                                        <input id="music-edit-full-name" type="text" name="full_name" value="${music.full_name}" required="true" maxlength="50" />
+                                        <input id="music-edit-category-id" type="hidden" name="category_id" value="${music.category_id}" />
+                                        <input id="music-edit-track" type="number" name="track" value="${music.track}" required="true" min="1" />
+                                        <input id="music-edit-file" type="file" name="file" accept="audio/*" required="true" />
+                                    </form>
+                                    <div id="music-edit-tags" class="music-tags">
+                                        ${body_tags}
+                                        <input id="music-edit-tag-input" type="text" />
+                                        <button id="music-edit-tag-add">Add Tag</button>
+                                    </div>
+                                    <button id="music-edit-submit" type="submit">Update</button>
+                                </div>`;
+                        break;
+                    case unauthorized:
+                        body = unauthorized_error;
+                        break;
+                    default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_personal', 'Edit Music', body);
     }
     
-    // TODO: Complete
     async function renderMusicNew(token, category_id) {
         const session_status = await bindings.getSessionStatus(token);
         let body = '';
@@ -230,7 +260,7 @@ export function newRender(bindings) {
                         body = `<div class="music-new">
                                     <form id="music-new-form">
                                         <input id="music-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
-                                        <input type="hidden" name="category_id" value="${category_id}" />
+                                        <input id="music-new-category-id" type="hidden" name="category_id" value="${category_id}" />
                                         <input id="music-new-track" type="number" name="track" required="true" min="1" />
                                         <input id="music-new-file" type="file" name="file" accept="audio/*" required="true" />
                                     </form>
@@ -375,7 +405,7 @@ export function newRender(bindings) {
         return ``;
     }
     
-    return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderCategoryNew, renderMusicDetails, renderMusicEdit, renderMusicNew, renderPlaylist, renderSettings, renderAbout };
+    return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderCategoryNew, renderMusicEdit, renderMusicNew, renderPlaylist, renderSettings, renderAbout };
 }
 
 
