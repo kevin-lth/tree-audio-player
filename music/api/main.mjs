@@ -351,7 +351,7 @@ async function handleMusicResource(method, token, parameters, request, response)
             try {
                 const tags_value = data.getFieldValue('tags');
                 if (tags_value !== null) { tags = JSON.parse(tags_value); }
-            } catch (error) { console.log(error); bodylessResponse(badRequest, '', response); return; }
+            } catch (error) { bodylessResponse(badRequest, '', response); return; }
             const id_less_music = newIDlessMusic(data.getFieldValue('full_name'), data.getFieldValue('category_id'), data.getFieldValue('track'), tags);
             if (id_less_music === null) { bodylessResponse(badRequest, '', response); await data.deleteAllTemporaryFiles(); return; }
             
