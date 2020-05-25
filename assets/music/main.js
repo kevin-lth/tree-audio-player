@@ -116,7 +116,6 @@ function newCategory(event) {
         if (form_data.get('cover') === undefined) { sendRequestToAPI('POST', '/api/category/resource', form_data, refresh, refresh); }
         else { // We need to remove the cover from the form for now. We will send it separately.
             const cover_form = new FormData();
-            console.log(form_data.get('cover'));
             cover_form.set('cover', form_data.get('cover'));
             function afterSuccessfulPost(response) { 
                 response.json().then( (json) => {
