@@ -18,7 +18,6 @@ let routes = {
         new: handleCategoryNew,
     },
     music: {
-        details: handleMusicDetails,
         edit: handleMusicEdit,
         new: handleMusicNew,
     },
@@ -102,13 +101,6 @@ async function handleCategoryNew(method, token, parameters, request, response) {
     if (parent_id === null) { bodylessResponse(badRequest, '', response); }
     else if (method === 'HEAD') { bodylessResponse(OK, await render.renderCategoryNew(token, id), response); }
     else { bodyResponse(OK, await render.renderCategoryNew(token, parent_id), response); }
-}
-
-async function handleMusicDetails(method, token, parameters, request, response) {
-    const id = newInt(parameters['id']);
-    if (id === null) { bodylessResponse(badRequest, '', response); }
-    else if (method === 'HEAD') { bodylessResponse(OK, await render.renderMusicDetails(token, id), response); }
-    else { bodyResponse(OK, await render.renderMusicDetails(token, id), response); }
 }
 
 async function handleMusicEdit(method, token, parameters, request, response) {

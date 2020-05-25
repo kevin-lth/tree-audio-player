@@ -62,7 +62,10 @@ export function newRender(bindings) {
                         for (let i = 0; i < categories.response.length; i++) {
                             body_categories += renderCategory(categories.response[i], session_status.response.username);
                         }
-                        body = `<div class="category-list category-private">${body_categories}</div>`;
+                        body = `<div class="category-list category-private">
+                                    ${body_categories}
+                                    <a id="category-add" class="category-add-button" href="/html/category/new" title="Add a new category">Add a new category</a>
+                                </div>`;
                         break;
                     case unauthorized: case internalServerError: default:
                         body = unknown_error;
@@ -91,7 +94,11 @@ export function newRender(bindings) {
                                 const musics = musics_result.response;
                                 let body_musics = '';
                                 for (let i = 0; i < musics.length; i++) {
-                                    body_musics += renderMusic(musics[i]);
+                                    body_musics += owned ? `<article class="owned-music">
+                                                                ${renderMusic(musics[i])}
+                                                                <a id="music-edit-${musics[i].id}" class="music-edit-button" href="/html/music/edit?id=${musics[i].id}" title="${musics[i].full_name} - Edit" data-music-id="${musics[i].id}">Edit</a>
+                                                                <button id="music-delete-${musics[i].id}" class="music-delete-button" title="${musics[i].full_name} - Delete" data-music-id="${musics[i].id}">Delete</button>
+                                                            </article>` : renderMusic(musics[i]);
                                 }
                                 body = `<div class="category-details">
                                             <article title="${category.full_name}" class="category" data-category-id="${category.id}">
@@ -100,15 +107,18 @@ export function newRender(bindings) {
                                                 <span class="category-short-name">Short Name : ${category.short_name}</span>
                                                 <span class="category-creator">Created by : ${category.creator}</span>
                                                 <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
-                                                ${owned ? `<a id="category-edit-${category.id}" class="category-edit" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
-                                                ${owned ? `<button id="category-delete-${category.id}" class="category-delete" title="${category.full_name} - Delete" data-category-id="${category.id}">Delete</button>` : ''}
-                                                ${category.is_public && !owned ? `<button id="category-request-${category.id}" class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
-                                                ${!owned ? `<button id="category-revoke-${category.id}" class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
+                                                ${owned ? `<a id="category-edit-${category.id}" class="category-edit-button" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
+                                                ${owned ? `<button id="category-delete-${category.id}" class="category-delete-button" title="${category.full_name} - Delete" data-category-id="${category.id}">Delete</button>` : ''}
+                                                ${category.is_public && !owned ? `<button id="category-request-${category.id}" class="category-request-button" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
+                                                ${!owned ? `<button id="category-revoke-${category.id}" class="category-revoke-button" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
                                             </article>
                                             <span class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</span>
                                             <div class="category-list">${body_children}</div>
                                             <span class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>) :</span>
-                                            <div class="music-list">${body_musics}</div>
+                                            <div class="music-list">
+                                                ${body_musics}
+                                                <a id="music-add" class="music-add-button" href="/html/music/new?category_id=${category.id}" title="Add a new music" >Add a new music</a>
+                                            </div>
                                         </div>`;
                                 break;
                             default:
@@ -207,35 +217,6 @@ export function newRender(bindings) {
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
         return await renderPage(token, 'category_personal', 'New Category', body);
-    }
-    
-    async function renderMusicDetails(token, id) {
-        const session_status = await bindings.getSessionStatus(token);
-        let body = '';
-        if (session_status.http_code === OK) {
-            if (session_status.response.username !== null) {
-                const music_result = await bindings.getMusic(token, id);
-                switch (music_result.http_code) {
-                    case OK:
-                        const music = music_result.response;
-                        let body_tags = '';
-                        if (music.tags !== undefined) {
-                            for (let i = 0; i < music.tags.length; i++) {
-                                body_tags += `<span class="music-tag" data-tag="${music.tags[i]}">${music.tags[i]}</span>`;
-                            }
-                        } // TODO
-                        body = `<div class="music-details">
-                                </div>`;
-                        break;
-                    case unauthorized:
-                        body = unauthorized_error;
-                        break;
-                    default:
-                        body = unknown_error;
-                }
-            } else { body = not_logged_in; }
-        } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'Music Details', body);
     }
     
     async function renderMusicEdit(token, id) {

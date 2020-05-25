@@ -62,16 +62,19 @@ function updateAllEventListeners() {
     updateEventListener('#login-submit', 'click', login);
     updateEventListener('#header-logout', 'click', logout);
     
-    updateEventListener('.category-request', 'click', requestCategoryAccess);
-    updateEventListener('.category-revoke', 'click', revokeCategoryAccess);
+    updateEventListener('.category-request-button', 'click', requestCategoryAccess);
+    updateEventListener('.category-revoke-button', 'click', revokeCategoryAccess);
     updateEventListener('#category-edit-submit', 'click', editCategory);
     updateEventListener('#category-new-submit', 'click', newCategory);
+    updateEventListener('.category-delete-button', 'click', deleteCategory);
     
-    updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
-    updateEventListener('#music-edit-tag-add', 'click', addEditTag);
     updateEventListener('#music-edit-submit', 'click', editMusic);
-    updateEventListener('#music-new-tag-add', 'click', addNewTag);
     updateEventListener('#music-new-submit', 'click', newMusic);
+    updateEventListenerForEach('.music-delete-button', 'click', deleteMusic);
+    
+    updateEventListener('#music-edit-tag-add', 'click', addEditTag);
+    updateEventListener('#music-new-tag-add', 'click', addNewTag);
+    updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
 };
 
 function login(event) {
