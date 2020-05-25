@@ -101,6 +101,7 @@ export function newRender(bindings) {
                                                 <span class="category-creator">Created by : ${category.creator}</span>
                                                 <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
                                                 ${owned ? `<a id="category-edit-${category.id}" class="category-edit" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
+                                                ${owned ? `<button id="category-delete-${category.id}" class="category-delete" title="${category.full_name} - Delete" data-category-id="${category.id}">Delete</button>` : ''}
                                                 ${category.is_public && !owned ? `<button id="category-request-${category.id}" class="category-request" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
                                                 ${!owned ? `<button id="category-revoke-${category.id}" class="category-revoke" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
                                             </article>
@@ -206,6 +207,35 @@ export function newRender(bindings) {
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
         return await renderPage(token, 'category_personal', 'New Category', body);
+    }
+    
+    async function renderMusicDetails(token, id) {
+        const session_status = await bindings.getSessionStatus(token);
+        let body = '';
+        if (session_status.http_code === OK) {
+            if (session_status.response.username !== null) {
+                const music_result = await bindings.getMusic(token, id);
+                switch (music_result.http_code) {
+                    case OK:
+                        const music = music_result.response;
+                        let body_tags = '';
+                        if (music.tags !== undefined) {
+                            for (let i = 0; i < music.tags.length; i++) {
+                                body_tags += `<span class="music-tag" data-tag="${music.tags[i]}">${music.tags[i]}</span>`;
+                            }
+                        } // TODO
+                        body = `<div class="music-details">
+                                </div>`;
+                        break;
+                    case unauthorized:
+                        body = unauthorized_error;
+                        break;
+                    default:
+                        body = unknown_error;
+                }
+            } else { body = not_logged_in; }
+        } else { body = unknown_error; }
+        return await renderPage(token, 'category_personal', 'Music Details', body);
     }
     
     async function renderMusicEdit(token, id) {
@@ -377,7 +407,7 @@ export function newRender(bindings) {
     function renderCategory(category, account_username) {
         const owned = (category.creator === account_username);
         return `<article title="${category.full_name}" class="category ${owned ? 'owned-category' : ''}" data-category-id="${category.id}">
-                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" />
+                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
                     ${owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''}
                     <span class="category-full-name">${category.full_name}</span>
                     <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>

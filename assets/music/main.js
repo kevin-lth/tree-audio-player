@@ -41,7 +41,11 @@ function nothing() { }
 
 function refresh() {  window.location.reload(true); }
 
+function goBack() { history.back(); }
+
 function gotoHome() { window.location.href = '/html/'; }
+
+function gotoPersonalCategories() { window.location.href = '/html/category/personal'; }
 
 function failedLogin(error) {
     const password_query = document.querySelector('#login-password'), message_query = document.querySelector('#login-message');
@@ -84,6 +88,18 @@ function logout() {
     sendRequestToAPI('POST', '/api/account/logout/', '', gotoHome, gotoHome);
 }
 
+function selectCategory(category_id) {
+
+}
+
+function unselectCategory(category_id) {
+
+}
+
+function toggleCategory(event) {
+    
+}
+
 function requestCategoryAccess(event) {
     const id = event.target.dataset.categoryId;
     if (id !== undefined) { sendRequestToAPI('POST', '/api/category/personal?id=' + id, '', refresh, refresh); }
@@ -101,13 +117,13 @@ function editCategory(event) {
         if (id !== undefined) {
             if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
             if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-            if (form_data.get('cover').name === '') { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, refresh, refresh); }
+            if (form_data.get('cover').name === '') { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, goBack, refresh); }
             else { // We need to remove the cover from the form for now. We will send it separately.
                 const cover_form = new FormData();
                 cover_form.set('cover', form_data.get('cover'));
                 form_data.delete('cover');
                 sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, nothing, nothing);
-                sendRequestToAPI('POST', '/api/category/cover?id=' + id, cover_form, refresh, refresh);
+                sendRequestToAPI('POST', '/api/category/cover?id=' + id, cover_form, goBack, refresh);
             }
         }
     }
@@ -119,19 +135,24 @@ function newCategory(event) {
         const form_data = new FormData(form);
         if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
         if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-        if (form_data.get('cover').name === '') { sendRequestToAPI('POST', '/api/category/resource', form_data, refresh, refresh); }
+        if (form_data.get('cover').name === '') { sendRequestToAPI('POST', '/api/category/resource', form_data, goBack, refresh); }
         else { // We need to remove the cover from the form for now. We will send it separately.
             const cover_form = new FormData();
             cover_form.set('cover', form_data.get('cover'));
             form_data.delete('cover');
             function afterSuccessfulPost(response) { 
                 response.json().then( (json) => {
-                    sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, refresh, refresh);
+                    sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, goBack, refresh);
                 });
             }
             sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, nothing); // TODO : An error occured
         }
     }
+}
+
+function deleteCategory(event) {
+    const id = event.target.dataset.categoryId;
+    if (id !== null) { sendRequestToAPI('DELETE', '/api/category/resource?id=' + id, '', goBack, refresh); }
 }
 
 function addEditTag() { addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
@@ -164,13 +185,13 @@ function editMusic(event) {
         for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
         form_data.append('tags', JSON.stringify(tags));
         console.log(form_data, form_data.get('file'));
-        if (form_data.get('file').name === '') { sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, refresh, refresh); }
+        if (form_data.get('file').name === '') { sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, goBack, refresh); }
         else { // We need to remove the cover from the form for now. We will send it separately.
             const file_form = new FormData();
             file_form.set('file', form_data.get('file'));
             form_data.delete('file');
             sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, nothing, nothing); // TODO : An error occured
-            sendRequestToAPI('POST', '/api/music/file?id=' + id, file_form, refresh, refresh);
+            sendRequestToAPI('POST', '/api/music/file?id=' + id, file_form, goBack, refresh);
         }
     }
 }
@@ -183,19 +204,24 @@ function newMusic(event) {
         const tags = [], span_tags = document.querySelectorAll('.music-new-tag');
         for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
         form_data.append('tags', JSON.stringify(tags));
-        if (form_data.get('file').name === '') { sendRequestToAPI('POST', '/api/music/resource', form_data, refresh, refresh); }
+        if (form_data.get('file').name === '') { sendRequestToAPI('POST', '/api/music/resource', form_data, goBack, refresh); }
         else { // We need to remove the cover from the form for now. We will send it separately.
             const file_form = new FormData();
             file_form.set('file', form_data.get('file'));
             form_data.delete('file');
             function afterSuccessfulPost(response) { 
                 response.json().then( (json) => {
-                    sendRequestToAPI('POST', '/api/music/file?id=' + json.id, file_form, refresh, refresh);
+                    sendRequestToAPI('POST', '/api/music/file?id=' + json.id, file_form, goBack, refresh);
                 });
             }
             sendRequestToAPI('POST', '/api/music/resource', form_data, afterSuccessfulPost, nothing); // TODO : An error occured
         }
     }
+}
+
+function deleteMusic(event) {
+    const id = event.target.dataset.musicId;
+    if (id !== null) { sendRequestToAPI('DELETE', '/api/music/resource?id=' + id, '', goBack, refresh); }
 }
 
 window.addEventListener('DOMContentLoaded', updateAllEventListeners);
