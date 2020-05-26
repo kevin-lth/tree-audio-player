@@ -8,7 +8,7 @@ export function newRender(bindings) {
     const OK = 200, unauthorized = 401, internalServerError = 500;
     
     const possible_audio_mime_types = {
-        'ogg|opus-96': "audio/x-opus+ogg",
+        'ogg|opus-96': "audio/ogg",
         'mp3-128': "audio/mpeg"
     }
 
@@ -427,7 +427,7 @@ export function newRender(bindings) {
         for (let i = 0; i < audio_formats.length; i++) {
             sources += `<source id="audio-source-${audio_formats[i]}" class="audio-source" type="${possible_audio_mime_types[audio_formats[i]]}" data-audio-format="${audio_formats[i]}" />`;
         }
-        return `<audio id="audio-player" autoplay="autoplay" preload="auto">
+        return `<audio id="audio-player" autoplay="autoplay" preload="auto" controls="temp">
                     ${sources}
                 </audio>
                 <span id="audio-category"></span>

@@ -83,6 +83,9 @@ function updateAllEventListeners() {
     updateEventListener('#music-edit-tag-add', 'click', addEditTag);
     updateEventListener('#music-new-tag-add', 'click', addNewTag);
     updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
+    
+    updateEventListener('#audio-player', 'timeupdate', updateTime);
+    updateEventListener('#audio-player', 'durationupdate', updateDuration);
 };
 
 function saveToLocalStorage() {
@@ -112,8 +115,9 @@ function loadSelectedMusic() {
                 for (let i = 0; i < sources.length; i++) {
                     const format = sources[i].dataset.audioFormat;
                     sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
-                    audio.load();
                 }
+                audio.load();
+                audio.currentTime = current_audio_time;
             }
             if (music_info[music_id] !== undefined) { launchMusic(); }
             else {
@@ -394,6 +398,21 @@ function removeMusicFromPlayer(event) {
         selected_musics.splice(selected_musics.indexOf(id), 1);
         saveToLocalStorage();
     }
+}
+
+function updateTime(event) {
+    if (!event.currentTarget.paused) { current_audio_time = event.currentTarget.currentTime; }
+    localStorage.setItem('current_audio_time', JSON.stringify(current_audio_time));
+}
+
+function updateProgressBar() {
+    const progress_bar = document.querySelector('#audio-progress-bar');
+    if (progress_bar !== null) { progress_bar.value = current_audio_time; }
+}
+
+function updateDuration(event) {
+    const progress_bar = document.querySelector('#audio-progress-bar');
+    if (progress_bar !== null) { progress_bar.max = event.currentTarget.duration; }
 }
 
 window.addEventListener('DOMContentLoaded', onLoad);
