@@ -380,13 +380,14 @@ export function getAPI() {
                 if (!(await connection.checkCategoryOwnership(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
                 const temporary_api_response = newAPIResponse(null, accepted);
                 execute_before_processing(temporary_api_response);
-                const file_urls = await processMusicFile(temporary_url);
-                if (file_urls === null) { return newAPIResponse(null, internalServerError); }
+                const file_result = await processMusicFile(temporary_url);
+                if (file_result === null || file_result.duration === -1) { return newAPIResponse(null, internalServerError); }
                 else {
-                    const keys = Object.keys(file_urls);
+                    const keys = Object.keys(file_result.formats);
                     for (let i = 0; i < keys.length; i++) {
                         let done = await connection.removeMusicFormat(music_id, keys[i]);
-                        if (done) { done = await connection.addMusicFormatAndURL(music_id, keys[i], file_urls[keys[i]]); }
+                        if (done) { done = await connection.addMusicFormatAndURL(music_id, keys[i], file_result.formats[keys[i]]); }
+                        if (done) { done = await connection.setMusicDuration(music_id, file_result.duration); }
                         if (!done) { return newAPIResponse(null, internalServerError); }
                     }
                     return newAPIResponse(null, OK);

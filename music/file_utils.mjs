@@ -105,14 +105,20 @@ export async function processMusicFile(file_name) {
     try {
         // FFMPEG will crash if anything goes wrong (for instance, if it isn't a music file..)
         const formats = Object.keys(audio_formats), result = {};
+        let duration = -1;
         for (let i = 0; i < formats.length; i++) {
             const format = formats[i];
             const format_data = audio_formats[format];
             const new_file_name = crypto.randomBytes(16).toString('hex');
             await __promise_ffmpeg(file_name, format_data, new_file_name);
             result[format] = new_file_name;
+            if (duration == -1) {
+                ffmpeg(__getMusicURL(new_file_name, format_data)).ffprobe((error, metadata) => {
+                    if (metadata !== null && metadata !== undefined) { duration = Math.ceil(metadata.format.duration); }
+                });
+            }
         }
-        return result;
+        return { formats: result, duration };
     } catch (error) {
         console.log(`[File] processMusicFile failed ! file_name = ${file_name}, error = ${error}. Ignoring file sent by client.`);
         return null;

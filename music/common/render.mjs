@@ -17,8 +17,8 @@ export function newRender(bindings) {
             if (session_status.response.username === null) {
             body = `<div class="login">
                         <form id="login-form">
-                            <input id="login-username" type="text" name="username" required="true" maxlength="16" />
-                            <input id="login-password" type="password" name="password" required="true" maxlength="32" />
+                            <input id="login-username" type="text" name="username" required="required" maxlength="16" />
+                            <input id="login-password" type="password" name="password" required="required" maxlength="32" />
                         </form>
                         <button id="login-submit" type="submit">Log In</button>
                         <span id="login-message"></span>
@@ -102,7 +102,7 @@ export function newRender(bindings) {
                                 }
                                 body = `<div class="category-details">
                                             <article title="${category.full_name}" class="category" data-category-id="${category.id}">
-                                                <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" />
+                                                <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
                                                 <span class="category-full-name">Full Name : ${category.full_name}</span>
                                                 <span class="category-short-name">Short Name : ${category.short_name}</span>
                                                 <span class="category-creator">Created by : ${category.creator}</span>
@@ -158,8 +158,8 @@ export function newRender(bindings) {
                                     body = `<div class="category-edit">
                                                 <img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
                                                 <form id="category-edit-form" data-category-id="${category.id}">
-                                                    <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="true" maxlength="50" />
-                                                    <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="true" maxlength="20" />
+                                                    <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="required" maxlength="50" />
+                                                    <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="required" maxlength="20" />
                                                     <select id="category-edit-parent" name="parent_id">
                                                         ${parent_options}
                                                     </select>
@@ -200,13 +200,13 @@ export function newRender(bindings) {
                         }
                         body = `<div class="category-new">
                                     <form id="category-new-form">
-                                        <input id="category-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
-                                        <input id="category-new-short-name" type="text" name="short_name" required="true" maxlength="20" />
+                                        <input id="category-new-full-name" type="text" name="full_name" required="required" maxlength="50" />
+                                        <input id="category-new-short-name" type="text" name="short_name" required="required" maxlength="20" />
                                         <select id="category-new-parent" name="parent_id">
                                             ${parent_options}
                                         </select>
                                         <input id="category-new-is-public" type="checkbox" name="is_public" value="true" />
-                                        <input id="category-new-cover" type="file" name="cover" accept="image/*" required="true" />
+                                        <input id="category-new-cover" type="file" name="cover" accept="image/*" required="required" />
                                     </form>
                                     <button id="category-new-submit" type="submit">Add</button>
                                 </div>`;
@@ -236,10 +236,10 @@ export function newRender(bindings) {
                         }
                         body = `<div class="music-edit">
                                     <form id="music-edit-form" data-music-id="${music.id}">
-                                        <input id="music-edit-full-name" type="text" name="full_name" value="${music.full_name}" required="true" maxlength="50" />
+                                        <input id="music-edit-full-name" type="text" name="full_name" value="${music.full_name}" required="required" maxlength="50" />
                                         <input id="music-edit-category-id" type="hidden" name="category_id" value="${music.category_id}" />
-                                        <input id="music-edit-track" type="number" name="track" value="${music.track}" required="true" min="1" />
-                                        <input id="music-edit-file" type="file" name="file" accept="audio/*" required="true" />
+                                        <input id="music-edit-track" type="number" name="track" value="${music.track}" required="required" min="1" />
+                                        <input id="music-edit-file" type="file" name="file" accept="audio/*" required="required" />
                                     </form>
                                     <div id="music-edit-tags" class="music-tags">
                                         ${body_tags}
@@ -270,10 +270,10 @@ export function newRender(bindings) {
                     case OK:
                         body = `<div class="music-new">
                                     <form id="music-new-form">
-                                        <input id="music-new-full-name" type="text" name="full_name" required="true" maxlength="50" />
+                                        <input id="music-new-full-name" type="text" name="full_name" required="required" maxlength="50" />
                                         <input id="music-new-category-id" type="hidden" name="category_id" value="${category_id}" />
-                                        <input id="music-new-track" type="number" name="track" required="true" min="1" />
-                                        <input id="music-new-file" type="file" name="file" accept="audio/*" required="true" />
+                                        <input id="music-new-track" type="number" name="track" required="required" min="1" />
+                                        <input id="music-new-file" type="file" name="file" accept="audio/*" required="required" />
                                     </form>
                                     <div id="music-new-tags" class="music-tags">
                                         <input id="music-new-tag-input" type="text" />
