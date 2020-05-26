@@ -1,8 +1,14 @@
 "use strict";
 
-// Util functions
 
 const OK = 200, unauthorized = 401;
+
+// LocalStorage variables
+let selected_categories = [];
+let selected_musics = [];
+let current_audio_time = 0;
+
+// Util functions
 
 function updateEventListener(selector, event_type, func) {
     const query = document.querySelector(selector);
@@ -62,6 +68,7 @@ function updateAllEventListeners() {
     updateEventListener('#login-submit', 'click', login);
     updateEventListener('#header-logout', 'click', logout);
     
+    updateEventListenerForEach('.category-toggle', 'click', toggleCategory);
     updateEventListener('.category-request-button', 'click', requestCategoryAccess);
     updateEventListener('.category-revoke-button', 'click', revokeCategoryAccess);
     updateEventListener('#category-edit-submit', 'click', editCategory);
@@ -77,6 +84,44 @@ function updateAllEventListeners() {
     updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
 };
 
+function saveToLocalStorage() {
+    localStorage.setItem('selected_categories', JSON.stringify(selected_categories));
+    localStorage.setItem('selected_musics', JSON.stringify(selected_musics));
+}
+
+function loadFromLocalStorage() {
+    try {
+        selected_categories = JSON.parse(localStorage.getItem('selected_categories'));
+        selected_musics = JSON.parse(localStorage.getItem('selected_musics'));
+        current_audio_time = JSON.parse(localStorage.getItem('current_audio_time'));
+    }
+    catch (error) { console.log('[LocalStorage] Failed loading data ! error = ' + error); selected_categories = [], selected_musics = [], current_audio_time = 0; }
+    if (selected_categories === null) { selected_categories = []; } // Should only be a problem on the first load of the website
+    if (selected_musics === null) { selected_musics = []; }
+    if (current_audio_time === null) { current_audio_time = 0; }
+}
+
+function loadMusicPlayer() {
+    const audio = document.querySelector('#audio-player');
+    // TODO
+}
+
+function updateSelectedCategories() {
+    const categories = document.querySelectorAll('.category-toggle');
+    for (let i = 0; i < categories.length; i++) {
+        if (selected_categories.indexOf(categories[i].dataset.categoryId) !== -1) {
+            categories[i].classList.add('category-selected');
+        }
+    }
+}
+
+function onLoad() {
+    loadFromLocalStorage();
+    loadMusicPlayer();
+    updateAllEventListeners();
+    updateSelectedCategories();
+}
+
 function login(event) {
     event.preventDefault();
     const login_form = document.querySelector('#login-form');
@@ -89,18 +134,6 @@ function login(event) {
 
 function logout() {
     sendRequestToAPI('POST', '/api/account/logout/', '', gotoHome, gotoHome);
-}
-
-function selectCategory(category_id) {
-
-}
-
-function unselectCategory(category_id) {
-
-}
-
-function toggleCategory(event) {
-    
 }
 
 function requestCategoryAccess(event) {
@@ -148,7 +181,7 @@ function newCategory(event) {
                     sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, goBack, refresh);
                 });
             }
-            sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, nothing); // TODO : An error occured
+            sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, refresh); // TODO : An error occured
         }
     }
 }
@@ -212,20 +245,34 @@ function newMusic(event) {
             const file_form = new FormData();
             file_form.set('file', form_data.get('file'));
             form_data.delete('file');
-            function afterSuccessfulPost(response) { 
+            function afterSuccessfulPost(response) {
                 response.json().then( (json) => {
                     sendRequestToAPI('POST', '/api/music/file?id=' + json.id, file_form, goBack, refresh);
-                });
+                }).error(refresh);
             }
-            sendRequestToAPI('POST', '/api/music/resource', form_data, afterSuccessfulPost, nothing); // TODO : An error occured
+            sendRequestToAPI('POST', '/api/music/resource', form_data, afterSuccessfulPost, refresh); // TODO : An error occured
         }
     }
 }
 
 function deleteMusic(event) {
     const id = event.target.dataset.musicId;
-    if (id !== null) { sendRequestToAPI('DELETE', '/api/music/resource?id=' + id, '', goBack, refresh); }
+    if (id !== null) { sendRequestToAPI('DELETE', '/api/music/resource?id=' + id, '', refresh, refresh); }
 }
 
-window.addEventListener('DOMContentLoaded', updateAllEventListeners);
+// A selected category implicitely also includes all of his children' musics. However, we won't deal with any recursivity here, as the API will serve us all the relevant musics with just a single ID.
+function toggleCategory(event) {
+    const category_id = event.target.dataset.categoryId, index = selected_categories.indexOf(category_id);
+    if (index === -1) { // We need to select the category
+        // We do not save any info. That means that connections will be slower for clients with don't support service workers. This also means that the list always stays up to date.
+        selected_categories.push(category_id);
+        event.target.classList.add('category-selected');
+    } else { // We need to unselect the category. We won't unselect the selected musics : users might want to open categories, select their musics, and close them to not clog up their interface in the playlist page.
+        selected_categories.splice(index, 1);
+        event.target.classList.remove('category-selected');
+    }
+    saveToLocalStorage();
+}
+
+window.addEventListener('DOMContentLoaded', onLoad);
 

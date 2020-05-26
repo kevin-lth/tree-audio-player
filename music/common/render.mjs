@@ -102,7 +102,7 @@ export function newRender(bindings) {
                                 }
                                 body = `<div class="category-details">
                                             <article title="${category.full_name}" class="category" data-category-id="${category.id}">
-                                                <img class="category-cover category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
+                                                <img class="category-cover category-toggle category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
                                                 <span class="category-full-name">Full Name : ${category.full_name}</span>
                                                 <span class="category-short-name">Short Name : ${category.short_name}</span>
                                                 <span class="category-creator">Created by : ${category.creator}</span>
@@ -388,7 +388,7 @@ export function newRender(bindings) {
     function renderCategory(category, account_username) {
         const owned = (category.creator === account_username);
         return `<article title="${category.full_name}" class="category ${owned ? 'owned-category' : ''}" data-category-id="${category.id}">
-                    <img class="category-cover" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
+                    <img class="category-cover category-toggle" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
                     ${owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''}
                     <span class="category-full-name">${category.full_name}</span>
                     <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
