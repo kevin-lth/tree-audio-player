@@ -86,6 +86,10 @@ function updateAllEventListeners() {
     
     updateEventListener('#audio-player', 'timeupdate', updateTime);
     updateEventListener('#audio-player', 'durationupdate', updateDuration);
+    
+    updateEventListener('#audio-play-stop', 'click', playOrStopAudio);
+    
+    updateEventListener('#audio-progress-bar', 'input', setNewTime);
 };
 
 function saveToLocalStorage() {
@@ -118,6 +122,8 @@ function loadSelectedMusic() {
                 }
                 audio.load();
                 audio.currentTime = current_audio_time;
+                updateDuration();
+                updateProgressBar();
             }
             if (music_info[music_id] !== undefined) { launchMusic(); }
             else {
@@ -400,19 +406,39 @@ function removeMusicFromPlayer(event) {
     }
 }
 
-function updateTime(event) {
-    if (!event.currentTarget.paused) { current_audio_time = event.currentTarget.currentTime; }
+function saveCurrentTime() {
     localStorage.setItem('current_audio_time', JSON.stringify(current_audio_time));
 }
 
 function updateProgressBar() {
+    updateDuration();
     const progress_bar = document.querySelector('#audio-progress-bar');
     if (progress_bar !== null) { progress_bar.value = current_audio_time; }
 }
 
-function updateDuration(event) {
+function updateTime(event) {
+    if (!event.currentTarget.paused) { current_audio_time = event.currentTarget.currentTime; }
+    updateProgressBar();
+    saveCurrentTime();
+}
+
+function updateDuration() {
+    const audio = document.querySelector('#audio-player');
     const progress_bar = document.querySelector('#audio-progress-bar');
-    if (progress_bar !== null) { progress_bar.max = event.currentTarget.duration; }
+    if (progress_bar !== null) { progress_bar.max = audio.duration; }
+}
+
+function playOrStopAudio() {
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null && audio.paused) { audio.play(); }
+    else if (audio !== null) { audio.pause(); }
+}
+
+function setNewTime(event) {
+    current_audio_time = event.currentTarget.value;
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null) { audio.currentTime = current_audio_time; }
+    saveCurrentTime();
 }
 
 window.addEventListener('DOMContentLoaded', onLoad);

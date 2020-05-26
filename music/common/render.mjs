@@ -427,7 +427,7 @@ export function newRender(bindings) {
         for (let i = 0; i < audio_formats.length; i++) {
             sources += `<source id="audio-source-${audio_formats[i]}" class="audio-source" type="${possible_audio_mime_types[audio_formats[i]]}" data-audio-format="${audio_formats[i]}" />`;
         }
-        return `<audio id="audio-player" autoplay="autoplay" preload="auto" controls="temp">
+        return `<audio id="audio-player" autoplay="autoplay" preload="auto">
                     ${sources}
                 </audio>
                 <span id="audio-category"></span>
@@ -438,7 +438,7 @@ export function newRender(bindings) {
                     <button id="audio-next">Next</button>
                     <button id="audio-random">Randomize</button>
                 </div>
-                <input id="audio-progress-bar" type="range" min="0" max="0" disabled="disabled" />`;
+                <input id="audio-progress-bar" type="range" min="0" max="0" step="0.1" />`;
     }
     
     return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderCategoryNew, renderMusicEdit, renderMusicNew, renderPlaylist, renderSettings, renderAbout };
