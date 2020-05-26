@@ -87,7 +87,10 @@ function updateAllEventListeners() {
     updateEventListener('#audio-player', 'timeupdate', updateTime);
     updateEventListener('#audio-player', 'durationupdate', updateDuration);
     
-    updateEventListener('#audio-play-stop', 'click', playOrStopAudio);
+    updateEventListener('#audio-previous', 'click', previousMusic);
+    updateEventListener('#audio-play-stop', 'click', playOrStopMusic);
+    updateEventListener('#audio-next', 'click', nextMusic);
+    updateEventListener('#audio-random', 'click', randomizeMusic);
     
     updateEventListener('#audio-progress-bar', 'input', setNewTime);
 };
@@ -428,10 +431,38 @@ function updateDuration() {
     if (progress_bar !== null) { progress_bar.max = audio.duration; }
 }
 
-function playOrStopAudio() {
+function playOrStopMusic() {
     const audio = document.querySelector('#audio-player');
     if (audio !== null && audio.paused) { audio.play(); }
     else if (audio !== null) { audio.pause(); }
+}
+
+function previousMusic() {
+    selected_musics.unshift(selected_musics.pop());
+    current_audio_time = 0;
+    loadSelectedMusic();
+    saveToLocalStorage();
+}
+
+function nextMusic() {
+    selected_musics.push(selected_musics.shift());
+    current_audio_time = 0;
+    saveCurrentTime();
+    loadSelectedMusic();
+    saveToLocalStorage();
+}
+
+function randomizeMusic() {
+    for (let i = selected_musics.length - 1; i > 0; i--) {
+        // We use the Fisher-Yates shuffle
+        let j = Math.floor(Math.random() * (i + 1));
+        [selected_musics[i], selected_musics[j]] = [selected_musics[j], selected_musics[i]];
+    }
+    current_audio_time = 0;
+    saveCurrentTime();
+    loadSelectedMusic();
+    saveToLocalStorage();
+    
 }
 
 function setNewTime(event) {
