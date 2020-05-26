@@ -168,7 +168,7 @@ async function handleCategoryResource(method, token, parameters, request, respon
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
                 response.setHeader('ETag', `"${etag}"`);
-                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                if (ifNoneMatch === etag) { bodylessResponse(notModified, '', response); }
                 else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
                 else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             }
@@ -242,7 +242,7 @@ async function handleCategoryPublic(method, token, parameters, request, response
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
                 response.setHeader('ETag', `"${etag}"`);
-                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                if (ifNoneMatch === etag) { bodylessResponse(notModified, '', response); }
                 else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
                 else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             }
@@ -263,7 +263,7 @@ async function handleCategoryPersonal(method, token, parameters, request, respon
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
                 response.setHeader('ETag', `"${etag}"`);
-                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                if (ifNoneMatch === etag) { bodylessResponse(notModified, '', response); }
                 else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
                 else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             }
@@ -293,7 +293,7 @@ async function handleCategoryOwned(method, token, parameters, request, response)
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
                 response.setHeader('ETag', `"${etag}"`);
-                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                if (ifNoneMatch === etag) { bodylessResponse(notModified, '', response); }
                 else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
                 else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             }
@@ -316,7 +316,7 @@ async function handleCategoryMusic(method, token, parameters, request, response)
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
                 response.setHeader('ETag', `"${etag}"`);
-                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                if (ifNoneMatch === etag) { bodylessResponse(notModified, '', response); }
                 else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
                 else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             }
@@ -339,7 +339,7 @@ async function handleMusicResource(method, token, parameters, request, response)
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
                 response.setHeader('ETag', `"${etag}"`);
-                if (ifNoneMatch === etag) { bodylessStreamResponse(notModified, api_response.response, response); }
+                if (ifNoneMatch === etag) { bodylessResponse(notModified, '', response); }
                 else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
                 else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             }

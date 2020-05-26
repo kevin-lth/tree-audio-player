@@ -6,7 +6,7 @@ import ffmpeg from 'fluent-ffmpeg';
 
 const cover_dir = './media/music/covers/', music_dir = './media/music/files/', temp_dir = os.tmpdir(), assets_dir = './assets/music/';
 
-// You might need to change your values for your own installation
+// You might need to change your values for your own installation, both here and in the render module.
 const audio_formats = {
     'mp3-128': { internal_name: 'mp3-128', mime_type: "audio/mpeg", codec: 'libmp3lame', bitrate: 128, extension: 'mp3' },
     'ogg|opus-96': { internal_name: 'ogg|opus-96', mime_type: "audio/x-opus+ogg", codec: 'libopus', bitrate: 96, extension: 'ogg' },

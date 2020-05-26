@@ -2,6 +2,8 @@ const alphanumeric = /^\w+$/, alphanumericOrEmpty = /^\w*$/, alphanumericAndNonW
 const URlMaxLength = 2000, acceptMaxLength = 250, authorizationMaxLength = 250, cookieMaxLength = 1000, rangeMaxLength = 50, etagMaxLength = 150;
 const validAuthorizationMethod = ['Bearer'];
 
+import { newInt, newBoolean } from './common/models.mjs';
+
 // Returns null if the URL is invalid or an object representing the URL if the URL is valid
 // Probably doable with only RegEx
 export function newURL(url) {
