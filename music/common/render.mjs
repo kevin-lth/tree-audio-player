@@ -1,9 +1,16 @@
+import { newDuration } from './models.mjs';
+
 export function newRender(bindings) {
 
     const title_prefix = 'Tree Audio Player'
     const unknown_error = '<div class="error">An error occured. Please try again later.</div>', unauthorized_error = '<div class="error">You are not allowed to access this resource.</div>',
         not_logged_in = '<div class="error">You are not logged in !</div>', already_logged_in = '<div class="error">You are already logged in !</div>';
     const OK = 200, unauthorized = 401, internalServerError = 500;
+    
+    const possible_audio_mime_types = {
+        'ogg|opus-96': "audio/x-opus+ogg",
+        'mp3-128': "audio/mpeg"
+    }
 
     async function renderHome(token) {
         const body = '<div class="welcome">Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren\'t logged in already, feel free to do so to access your music library. If you don\'t have an account, please contact an admin (see <a href="/html/about">About</a>).</div>';
@@ -102,7 +109,7 @@ export function newRender(bindings) {
                                 }
                                 body = `<div class="category-details">
                                             <article title="${category.full_name}" class="category" data-category-id="${category.id}">
-                                                <img class="category-cover category-toggle category-cover-details" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
+                                                <img class="category-cover category-toggle category-cover-details" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
                                                 <span class="category-full-name">Full Name : ${category.full_name}</span>
                                                 <span class="category-short-name">Short Name : ${category.short_name}</span>
                                                 <span class="category-creator">Created by : ${category.creator}</span>
@@ -298,6 +305,9 @@ export function newRender(bindings) {
                           <div class="playlist-header">
                               You can select musics listed here. Musics will then be added to the music player on the bottom. To add categories here, please select them on either the public or personal categories pages.
                           </div>
+                          <button id="playlist-select-all">Select all</button>
+                          <div class="selected-category-list"> <!-- This is handled by the client only -->
+                          </div>
                       </div>`;
         return await renderPage(token, 'playlist', 'Playlist', body);
     }
@@ -338,7 +348,7 @@ export function newRender(bindings) {
                         </nav>
                         <main>${main}</main>
                         <footer>${footer}</footer>
-                        <script src="/assets/main.js"></script> <!-- Executing the script before would slow the first paint of the page -->
+                        <script src="/assets/main.js"></script> <!-- The page needs to be loaded for the script to work -->
                     </body>
                 </html>`;
     }
@@ -407,13 +417,28 @@ export function newRender(bindings) {
                     <span class="music-track">${music.track}</span>
                     <span class="music-full-name">${music.full_name}</span>
                     ${tags}
-                    <span class="music-duration">${music.duration}</span>
+                    <span class="music-duration">${newDuration(music.duration).print()}</span>
                 </article>`;
     }
 
-    // TODO : Footer will contain music player, will be handled by client
     async function renderFooter() {
-        return ``;
+        const audio_formats = Object.keys(possible_audio_mime_types);
+        let sources = '';
+        for (let i = 0; i < audio_formats.length; i++) {
+            sources += `<source id="audio-source-${audio_formats[i]}" class="audio-source" type="${possible_audio_mime_types[audio_formats[i]]}" data-audio-format="${audio_formats[i]}" />`;
+        }
+        return `<audio id="audio-player" autoplay="autoplay" preload="auto">
+                    ${sources}
+                </audio>
+                <span id="audio-category"></span>
+                <span id="audio-music"></span>
+                <div id="audio-commands">
+                    <button id="audio-previous" class="audio-play">Previous</button>
+                    <button id="audio-play-stop">Play/Stop</button>
+                    <button id="audio-next">Next</button>
+                    <button id="audio-random">Randomize</button>
+                </div>
+                <input id="audio-progress-bar" type="range" min="0" max="0" disabled="disabled" />`;
     }
     
     return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderCategoryNew, renderMusicEdit, renderMusicNew, renderPlaylist, renderSettings, renderAbout };

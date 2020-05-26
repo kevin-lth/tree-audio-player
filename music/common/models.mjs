@@ -71,3 +71,16 @@ export function newBoolean(boolean) {
     else { return boolean };
 }
 
+export function newDuration(duration) {
+    duration = newInt(duration);
+    if (duration === null || duration < 0) { return null; }
+    function print() {
+        if (duration > 3599) { duration = 3599; } // We cap at 59:99
+        const seconds = duration % 60;
+        const minutes = (duration - seconds) / 60;
+        if (seconds < 10) { return `${minutes}:0${seconds}`; }
+        else { return `${minutes}:${seconds}`; }
+    }
+    return { totalDuration: duration, print };
+}
+
