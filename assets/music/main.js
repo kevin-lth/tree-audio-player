@@ -238,16 +238,19 @@ function updateCategoryToggles() {
     }
 }
 
-// TODO:Below
-
 function requestCategoryAccess(event) {
     const id = event.currentTarget.dataset.categoryId;
-    if (id !== undefined) { sendRequestToAPI('POST', '/api/category/personal?id=' + id, null, refresh, refresh); }
+    if (id !== undefined) { API('POST', '/api/category/personal?id=' + id).then(refresh).error(refresh); }
 }
 
 function revokeCategoryAccess(event) {
     const id = event.currentTarget.dataset.categoryId;
-    if (id !== null) { sendRequestToAPI('DELETE', '/api/category/personal?id=' + id, null, refresh, refresh); }
+    if (id !== null) { API('DELETE', '/api/category/personal?id=' + id).then(refresh).error(refresh); }
+}
+
+function __prepareCategoryFormData(form_data) {
+    if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
+    if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
 }
 
 function editCategory(event) {
@@ -255,15 +258,14 @@ function editCategory(event) {
     if (form !== null) {
         const id = form.dataset.categoryId, form_data = new FormData(form);
         if (id !== undefined) {
-            if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
-            if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-            if (form_data.get('cover').name === '') { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, goBack, refresh); }
+            __prepareCategoryFormData(form_data);
+            if (form_data.get('cover').name === '') { API('PUT', '/api/category/resource?id=' + id, form_data).then(goBack).error(refresh); }
             else { // We need to remove the cover from the form for now. We will send it separately.
                 const cover_form = new FormData();
                 cover_form.set('cover', form_data.get('cover'));
                 form_data.delete('cover');
-                sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, nothing, nothing);
-                sendRequestToAPI('POST', '/api/category/cover?id=' + id, cover_form, goBack, refresh);
+                // We want to refresh either when one request fails or when both are done
+                Promise.all([API('PUT', '/api/category/resource?id=' + id, form_data), API('POST', '/api/category/cover?id=' + id, cover_form)]).then(refresh).error(refresh);
             }
         }
     }
@@ -273,24 +275,16 @@ function newCategory(event) {
     const form = document.querySelector('#category-new-form');
     if (form !== null) {
         const form_data = new FormData(form);
-        if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
-        if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-        if (form_data.get('cover').name === '') { sendRequestToAPI('POST', '/api/category/resource', form_data, goBack, refresh); }
-        else { // We need to remove the cover from the form for now. We will send it separately.
+        __prepareCategoryFormData(form_data);
+        if (form_data.get('cover').name === '') { API('POST', '/api/category/resource', form_data).then(goBack).error(refresh); }
+        else { // We need to remove the cover from the form for now. We will send afterwards once the category exists.
             const cover_form = new FormData();
             cover_form.set('cover', form_data.get('cover'));
             form_data.delete('cover');
-            function afterSuccessfulPost(response) { 
-                response.json().then( (json) => {
-                    sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, goBack, refresh);
-                });
-            }
-            sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, refresh); // TODO : An error occured
+            API('POST', '/api/category/resource', form_data).then((json) => { API('POST', '/api/category/cover?id=' + json.id, cover_form).then(goBack).error(refresh); }).error(refresh);
         }
     }
 }
-
-// TODO : deleteCategory is done already
 
 function deleteCategory(event) {
     const id = event.currentTarget.dataset.categoryId;
@@ -304,6 +298,8 @@ function deleteCategory(event) {
 
 // Settings
 // TODO : Add settings
+
+// TODO: Below
 
 function loadSelectedCategories() {
     const selected_category_list = document.querySelector('.selected-category-list');
