@@ -290,6 +290,8 @@ function newCategory(event) {
     }
 }
 
+// TODO : deleteCategory is done already
+
 function deleteCategory(event) {
     const id = event.currentTarget.dataset.categoryId;
     if (id !== null) { API('DELETE', '/api/category/resource?id=' + id).then(goBack).error(refresh); }
@@ -301,7 +303,7 @@ function deleteCategory(event) {
 // Playlist
 
 // Settings
-// TODO
+// TODO : Add settings
 
 function loadSelectedCategories() {
     const selected_category_list = document.querySelector('.selected-category-list');
