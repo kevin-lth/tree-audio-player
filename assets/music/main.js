@@ -5,11 +5,12 @@ const OK = 200, unauthorized = 401;
 // LocalStorage variables
 let selected_categories = [];
 let selected_musics = [];
+let current_music_index = 0;
 let current_audio_time = 0;
 
 const music_info = {};
 
-// Util functions
+// Event handlers
 
 function updateEventListener(selector, event_type, func) {
     const query = document.querySelector(selector);
@@ -30,21 +31,88 @@ function updateEventListenerForEach(selector, event_type, func) {
     }
 }
 
-// We use the fetch API as most browsers support it nowadays
-function sendRequestToAPI(method, url, body, funcResponse = (data) => {}, funcError = (error) => {}) {
-    const request = fetch(url, {
-        method,
-        body,
-        credentials: 'same-origin',
-    });
-    function checkResponse(response) {
-        if (response.ok) { funcResponse(response); }
-        else { funcError(response); }
+// This is fine that not all elements will be present on the page at the same time
+function updateAllEventListeners() {
+    updateEventListener('#audio-player', 'timeupdate', updateCurrentTime);
+    updateEventListener('#audio-player', 'ended', nextMusic);
+    
+    updateEventListener('#audio-previous', 'click', previousMusic);
+    updateEventListener('#audio-play-stop', 'click', playOrStopMusic);
+    updateEventListener('#audio-next', 'click', nextMusic);
+    updateEventListener('#audio-random', 'click', randomizeMusic);
+    
+    updateEventListener('#audio-progress-bar', 'input', setCurrentTime);
+    
+
+    updateEventListener('#login-submit', 'click', login);
+    updateEventListener('#header-logout', 'click', logout);
+    
+    
+    updateEventListenerForEach('.category-toggle', 'click', toggleCategory);
+    updateEventListener('.category-request-button', 'click', requestCategoryAccess);
+    updateEventListener('.category-revoke-button', 'click', revokeCategoryAccess);
+    
+    updateEventListener('#category-edit-submit', 'click', editCategory);
+    updateEventListener('#category-new-submit', 'click', newCategory);
+    updateEventListener('.category-delete-button', 'click', deleteCategory);
+    
+    
+    updateEventListener('#music-edit-submit', 'click', editMusic);
+    updateEventListener('#music-new-submit', 'click', newMusic);
+    updateEventListenerForEach('.music-delete-button', 'click', deleteMusic);
+    
+    updateEventListener('#music-edit-tag-add', 'click', addEditTag);
+    updateEventListener('#music-new-tag-add', 'click', addNewTag);
+    updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
+};
+
+// LocalStorage
+
+function saveToLocalStorage(selection = ['selected_categories', 'selected_musics', 'current_music_index', 'current_audio_time']) {
+    for (let i = 0; i < selection.length; i++) {
+        switch (selection[i]) {
+            case 'selected_categories': localStorage.setItem('selected_categories', JSON.stringify(selected_categories)); break;
+            case 'selected_musics': localStorage.setItem('selected_musics', JSON.stringify(selected_musics)); break;
+            case 'current_music_index': localStorage.setItem('current_music_index', JSON.stringify(current_music_index)); break;
+            case 'current_audio_time': localStorage.setItem('current_audio_time', JSON.stringify(current_audio_time));break;
+        }
     }
-    request.then(checkResponse);
 }
 
-function nothing() { }
+function __loadValueFromLocalStorage(key, default_value) {
+    const value = localStorage.getItem(key);
+    if (value === null) { return default_value; }
+    else { return value; }
+}
+
+function loadFromLocalStorage() {
+    try {
+        selected_categories = JSON.parse(__loadValueFromLocalStorage('selected_categories', []));
+        selected_musics = JSON.parse(__loadValueFromLocalStorage('selected_musics', []));
+        current_music_index = JSON.parse(__loadValueFromLocalStorage('current_music_index', 0));
+        current_audio_time = JSON.parse(__loadValueFromLocalStorage('current_audio_time', 0));
+    }
+    catch (error) { console.log('[LocalStorage] Failed loading data ! error = ' + error); }
+}
+
+// API
+
+function API(method, url, body = null) { // We are using fetch because we don't care about IE support
+    function promiseFunc(resolve, reject) {
+        const request = fetch(url, {
+            method,
+            body,
+            credentials: 'same-origin',
+        });
+        // The API always gives JSON except for category covers and music files which won't be handled by any script
+        function __checkJSONResponse(response) {
+            if (response.ok) { response.json().then((json) => { Promise.resolve(json); }).error((error) => { Promise.reject(error); }); }
+            else { Promise.reject(response); }
+        }
+        request.then(__checkJSONResponse).error((error) => { Promise.reject(error); });
+    }
+    new Promise(promiseFunc);
+}
 
 function refresh() {  window.location.reload(true); }
 
@@ -54,7 +122,92 @@ function gotoHome() { window.location.href = '/html/'; }
 
 function gotoPersonalCategories() { window.location.href = '/html/category/personal'; }
 
-function failedLogin(error) {
+// Audio Player
+
+function __loadMusic() {
+    const sources = document.querySelectorAll('.audio-source');
+    for (let i = 0; i < sources.length; i++) {
+        const format = sources[i].dataset.audioFormat;
+        sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
+    }
+    audio.currentTime = current_audio_time;
+    updateProgressBar();
+}
+
+function updateMusic() {
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null && current_music_index < selected_musics.length) {
+        const music_id = selected_musics[current_music_index];
+        if (music_info[music_id] !== undefined) { __loadMusic(); }
+        else {
+            function addMusicInfoAndLaunchMusic(json) {
+                music_info[music_id] = json;
+                __loadMusic();
+            }
+            API('GET', '/api/music/resource?id=' + music_id).then(addMusicInfoAndLaunchMusic);
+        }
+    }
+}
+
+function updateProgressBar() {
+    const audio = document.querySelector('#audio-player'), progress_bar = document.querySelector('#audio-progress-bar');
+    if (audio !== null && progress_bar !== null) {
+        progress_bar.max = audio.duration;
+        progress_bar.value = current_audio_time;
+    }
+}
+
+function playOrStopMusic() {
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null) {
+        if (audio.paused) { audio.play(); }
+        else { audio.pause(); }
+    }
+}
+
+function previousMusic() {
+    if (current_music_index > 0) { current_music_index--; }
+    else { current_music_index = selected_musics.length - 1; }
+    current_audio_time = 0;
+    updateMusic();
+    saveToLocalStorage(['current_audio_time', 'current_music_index']);
+}
+
+function nextMusic() {
+    if (current_music_index < selected_musics.length) { current_music_index++; }
+    else { current_music_index = 0; }
+    current_audio_time = 0;
+    updateMusic();
+    saveToLocalStorage(['current_audio_time', 'current_music_index']);
+}
+
+function randomizeMusic() {
+    for (let i = selected_musics.length - 1; i > 0; i--) {
+        // We use the Fisher-Yates shuffle
+        let j = Math.floor(Math.random() * (i + 1));
+        [selected_musics[i], selected_musics[j]] = [selected_musics[j], selected_musics[i]];
+    }
+    current_music_index = 0, current_audio_time = 0; // We reset the index as well : there's no point staying in the middle of the list since it was randomized
+    updateMusic();
+    saveToLocalStorage(['current_audio_time', 'current_music_index']);
+}
+
+function updateCurrentTime(event) {
+    if (!event.currentTarget.paused) { current_audio_time = event.currentTarget.currentTime; }
+    updateProgressBar();
+    saveToLocalStorage(['current_audio_time']);
+}
+
+function setCurrentTime(event) {
+    current_audio_time = event.currentTarget.value;
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null) { audio.currentTime = current_audio_time; }
+    saveCurrentTime();
+}
+
+// Login / Logout
+
+function __failedLogin(error) {
     const password_query = document.querySelector('#login-password'), message_query = document.querySelector('#login-message');
     if (password_query !== null) { password_query.value = ''; }
     if (message_query !== null) {
@@ -63,92 +216,94 @@ function failedLogin(error) {
     }
 }
 
-// Event handlers
-
-function updateAllEventListeners() {
-    updateEventListener('#login-submit', 'click', login);
-    updateEventListener('#header-logout', 'click', logout);
-    
-    updateEventListenerForEach('.category-toggle', 'click', toggleCategory);
-    updateEventListener('.category-request-button', 'click', requestCategoryAccess);
-    updateEventListener('.category-revoke-button', 'click', revokeCategoryAccess);
-    updateEventListener('#category-edit-submit', 'click', editCategory);
-    updateEventListener('#category-new-submit', 'click', newCategory);
-    updateEventListener('.category-delete-button', 'click', deleteCategory);
-    
-    updateEventListener('#music-edit-submit', 'click', editMusic);
-    updateEventListener('#music-new-submit', 'click', newMusic);
-    updateEventListenerForEach('.music-delete-button', 'click', deleteMusic);
-    
-    updateEventListener('#music-edit-tag-add', 'click', addEditTag);
-    updateEventListener('#music-new-tag-add', 'click', addNewTag);
-    updateEventListenerForEach('.music-edit-tag', 'click', removeTag);
-    
-    updateEventListener('#audio-player', 'timeupdate', updateTime);
-    updateEventListener('#audio-player', 'durationupdate', updateDuration);
-    
-    updateEventListener('#audio-previous', 'click', previousMusic);
-    updateEventListener('#audio-play-stop', 'click', playOrStopMusic);
-    updateEventListener('#audio-next', 'click', nextMusic);
-    updateEventListener('#audio-random', 'click', randomizeMusic);
-    
-    updateEventListener('#audio-progress-bar', 'input', setNewTime);
-};
-
-function saveToLocalStorage() {
-    localStorage.setItem('selected_categories', JSON.stringify(selected_categories));
-    localStorage.setItem('selected_musics', JSON.stringify(selected_musics));
-}
-
-function loadFromLocalStorage() {
-    try {
-        selected_categories = JSON.parse(localStorage.getItem('selected_categories'));
-        selected_musics = JSON.parse(localStorage.getItem('selected_musics'));
-        current_audio_time = JSON.parse(localStorage.getItem('current_audio_time'));
-    }
-    catch (error) { console.log('[LocalStorage] Failed loading data ! error = ' + error); selected_categories = [], selected_musics = [], current_audio_time = 0; }
-    if (selected_categories === null) { selected_categories = []; } // Should only be a problem on the first load of the website
-    if (selected_musics === null) { selected_musics = []; }
-    if (current_audio_time === null) { current_audio_time = 0; }
-}
-
-function loadSelectedMusic() {
-    const audio = document.querySelector('#audio-player');
-    if (audio !== null) {
-        if (selected_musics.length > 0) {
-            const music_id = selected_musics[0];
-            function launchMusic() {
-                const sources = document.querySelectorAll('.audio-source');
-                for (let i = 0; i < sources.length; i++) {
-                    const format = sources[i].dataset.audioFormat;
-                    sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
-                }
-                audio.load();
-                audio.currentTime = current_audio_time;
-                updateDuration();
-                updateProgressBar();
-            }
-            if (music_info[music_id] !== undefined) { launchMusic(); }
-            else {
-                function addMusicInfoAndLaunchMusic(response) {
-                    response.json().then((json) => {
-                        music_info[music_id] = json;
-                        launchMusic();
-                    });
-                }
-                sendRequestToAPI('GET', '/api/music/resource?id=' + music_id, null, addMusicInfoAndLaunchMusic, nothing); // TODO: Error
-            }
-        }
+function login(event) {
+    const login_form = document.querySelector('#login-form');
+    if (login_form !== null && login_form.checkValidity()) {
+        // We will not do any checks here. The service worker will do a check if he is loaded, the server will always check
+        const form_data = new FormData(login_form);
+        API('POST', '/api/account/login/', form_data).then(gotoHome).catch(__failedLogin);  
     }
 }
 
-function updateAndLoadSelectedCategories() {
+function logout() { API('POST', '/api/account/logout/').then(refresh); }
+
+// Category
+
+function updateCategoryToggles() {
     const categories = document.querySelectorAll('.category-toggle');
     for (let i = 0; i < categories.length; i++) {
         if (selected_categories.indexOf(categories[i].dataset.categoryId) !== -1) {
             categories[i].classList.add('category-selected');
         }
     }
+}
+
+// TODO:Below
+
+function requestCategoryAccess(event) {
+    const id = event.currentTarget.dataset.categoryId;
+    if (id !== undefined) { sendRequestToAPI('POST', '/api/category/personal?id=' + id, null, refresh, refresh); }
+}
+
+function revokeCategoryAccess(event) {
+    const id = event.currentTarget.dataset.categoryId;
+    if (id !== null) { sendRequestToAPI('DELETE', '/api/category/personal?id=' + id, null, refresh, refresh); }
+}
+
+function editCategory(event) {
+    const form = document.querySelector('#category-edit-form');
+    if (form !== null) {
+        const id = form.dataset.categoryId, form_data = new FormData(form);
+        if (id !== undefined) {
+            if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
+            if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
+            if (form_data.get('cover').name === '') { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, goBack, refresh); }
+            else { // We need to remove the cover from the form for now. We will send it separately.
+                const cover_form = new FormData();
+                cover_form.set('cover', form_data.get('cover'));
+                form_data.delete('cover');
+                sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, nothing, nothing);
+                sendRequestToAPI('POST', '/api/category/cover?id=' + id, cover_form, goBack, refresh);
+            }
+        }
+    }
+}
+
+function newCategory(event) {
+    const form = document.querySelector('#category-new-form');
+    if (form !== null) {
+        const form_data = new FormData(form);
+        if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
+        if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
+        if (form_data.get('cover').name === '') { sendRequestToAPI('POST', '/api/category/resource', form_data, goBack, refresh); }
+        else { // We need to remove the cover from the form for now. We will send it separately.
+            const cover_form = new FormData();
+            cover_form.set('cover', form_data.get('cover'));
+            form_data.delete('cover');
+            function afterSuccessfulPost(response) { 
+                response.json().then( (json) => {
+                    sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, goBack, refresh);
+                });
+            }
+            sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, refresh); // TODO : An error occured
+        }
+    }
+}
+
+function deleteCategory(event) {
+    const id = event.currentTarget.dataset.categoryId;
+    if (id !== null) { API('DELETE', '/api/category/resource?id=' + id).then(goBack).error(refresh); }
+}
+
+
+// Music
+
+// Playlist
+
+// Settings
+// TODO
+
+function loadSelectedCategories() {
     const selected_category_list = document.querySelector('.selected-category-list');
     if (selected_category_list !== null) { // We are on the playlist page
         const category_result = [];
@@ -163,7 +318,7 @@ function updateAndLoadSelectedCategories() {
                             }
                             category_result.push(result);
                             if (category_result.length === selected_categories.length) { // We can't check i directly, since we are in a callback we cannot verify which one will be the last
-                                category_result.sort(sortCategoryPlaylist);
+                                category_result.sort(__sortCategoryPlaylist);
                                 for (let j = 0; j < category_result.length; j++) {
                                     selected_category_list.appendChild(category_result[j]);
                                 }
@@ -218,7 +373,7 @@ function createPlaylistCategory(category, musics) {
         result_musics.push(music_li);
     }
     category_article.appendChild(category_header);    // We want to sort the music by track number or, if failing, by alphabetical order. Because we are in a loop, we can't assure that order unless we do it at the very end
-    result_musics.sort(sortMusicPlaylist);
+    result_musics.sort(__sortMusicPlaylist);
     for (let i = 0; i < result_musics.length; i++) {
         category_musics.appendChild(result_musics[i]);
     }
@@ -227,88 +382,16 @@ function createPlaylistCategory(category, musics) {
     return category_article;
 }
 
-function sortCategoryPlaylist(category1, category2) { return category1.dataset.fullName.localeCompare(category2.dataset.fullName); }
+function __sortCategoryPlaylist(category1, category2) { return category1.dataset.fullName.localeCompare(category2.dataset.fullName); }
 
-function sortMusicPlaylist(music_li1, music_li2) {
+function __sortMusicPlaylist(music_li1, music_li2) {
     if (music_li1.dataset.track === music_li2.dataset.track) { return music_li1.dataset.title.localeCompare(music_li2.dataset.title); }
     else { return music_li1.dataset.track - music_li2.dataset.track } // Not equal, the difference can determine both cases
 }
 
-function onLoad() {
-    loadFromLocalStorage();
-    loadSelectedMusic();
-    updateAllEventListeners();
-    updateAndLoadSelectedCategories();
-}
 
-function login(event) {
-    event.preventDefault();
-    const login_form = document.querySelector('#login-form');
-    if (login_form !== null && login_form.checkValidity()) {
-        // We will not do any checks here. The service worker will do a check if he is loaded, the server will always check
-        const form_data = new FormData(login_form);
-        sendRequestToAPI('POST', '/api/account/login/', form_data, gotoHome, failedLogin);  
-    }
-}
 
-function logout() {
-    sendRequestToAPI('POST', '/api/account/logout/', null, gotoHome, gotoHome);
-}
 
-function requestCategoryAccess(event) {
-    const id = event.currentTarget.dataset.categoryId;
-    if (id !== undefined) { sendRequestToAPI('POST', '/api/category/personal?id=' + id, null, refresh, refresh); }
-}
-
-function revokeCategoryAccess(event) {
-    const id = event.currentTarget.dataset.categoryId;
-    if (id !== null) { sendRequestToAPI('DELETE', '/api/category/personal?id=' + id, null, refresh, refresh); }
-}
-
-function editCategory(event) {
-    const form = document.querySelector('#category-edit-form');
-    if (form !== null) {
-        const id = form.dataset.categoryId, form_data = new FormData(form);
-        if (id !== undefined) {
-            if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
-            if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-            if (form_data.get('cover').name === '') { sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, goBack, refresh); }
-            else { // We need to remove the cover from the form for now. We will send it separately.
-                const cover_form = new FormData();
-                cover_form.set('cover', form_data.get('cover'));
-                form_data.delete('cover');
-                sendRequestToAPI('PUT', '/api/category/resource?id=' + id, form_data, nothing, nothing);
-                sendRequestToAPI('POST', '/api/category/cover?id=' + id, cover_form, goBack, refresh);
-            }
-        }
-    }
-}
-
-function newCategory(event) {
-    const form = document.querySelector('#category-new-form');
-    if (form !== null) {
-        const form_data = new FormData(form);
-        if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
-        if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
-        if (form_data.get('cover').name === '') { sendRequestToAPI('POST', '/api/category/resource', form_data, goBack, refresh); }
-        else { // We need to remove the cover from the form for now. We will send it separately.
-            const cover_form = new FormData();
-            cover_form.set('cover', form_data.get('cover'));
-            form_data.delete('cover');
-            function afterSuccessfulPost(response) { 
-                response.json().then( (json) => {
-                    sendRequestToAPI('POST', '/api/category/cover?id=' + json.id, cover_form, goBack, refresh);
-                });
-            }
-            sendRequestToAPI('POST', '/api/category/resource', form_data, afterSuccessfulPost, refresh); // TODO : An error occured
-        }
-    }
-}
-
-function deleteCategory(event) {
-    const id = event.currentTarget.dataset.categoryId;
-    if (id !== null) { sendRequestToAPI('DELETE', '/api/category/resource?id=' + id, null, goBack, refresh); }
-}
 
 function addEditTag() { addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
 
@@ -409,67 +492,14 @@ function removeMusicFromPlayer(event) {
     }
 }
 
-function saveCurrentTime() {
-    localStorage.setItem('current_audio_time', JSON.stringify(current_audio_time));
-}
+// Load
 
-function updateProgressBar() {
-    updateDuration();
-    const progress_bar = document.querySelector('#audio-progress-bar');
-    if (progress_bar !== null) { progress_bar.value = current_audio_time; }
-}
-
-function updateTime(event) {
-    if (!event.currentTarget.paused) { current_audio_time = event.currentTarget.currentTime; }
-    updateProgressBar();
-    saveCurrentTime();
-}
-
-function updateDuration() {
-    const audio = document.querySelector('#audio-player');
-    const progress_bar = document.querySelector('#audio-progress-bar');
-    if (progress_bar !== null) { progress_bar.max = audio.duration; }
-}
-
-function playOrStopMusic() {
-    const audio = document.querySelector('#audio-player');
-    if (audio !== null && audio.paused) { audio.play(); }
-    else if (audio !== null) { audio.pause(); }
-}
-
-function previousMusic() {
-    selected_musics.unshift(selected_musics.pop());
-    current_audio_time = 0;
-    loadSelectedMusic();
-    saveToLocalStorage();
-}
-
-function nextMusic() {
-    selected_musics.push(selected_musics.shift());
-    current_audio_time = 0;
-    saveCurrentTime();
-    loadSelectedMusic();
-    saveToLocalStorage();
-}
-
-function randomizeMusic() {
-    for (let i = selected_musics.length - 1; i > 0; i--) {
-        // We use the Fisher-Yates shuffle
-        let j = Math.floor(Math.random() * (i + 1));
-        [selected_musics[i], selected_musics[j]] = [selected_musics[j], selected_musics[i]];
-    }
-    current_audio_time = 0;
-    saveCurrentTime();
-    loadSelectedMusic();
-    saveToLocalStorage();
-    
-}
-
-function setNewTime(event) {
-    current_audio_time = event.currentTarget.value;
-    const audio = document.querySelector('#audio-player');
-    if (audio !== null) { audio.currentTime = current_audio_time; }
-    saveCurrentTime();
+function onLoad() {
+    loadFromLocalStorage();
+    updateAllEventListeners();
+    updateMusic();
+    updateCategoryToggles();
+    loadSelectedCategories();
 }
 
 window.addEventListener('DOMContentLoaded', onLoad);
