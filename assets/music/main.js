@@ -106,12 +106,12 @@ function API(method, url, body = null) { // We are using fetch because we don't 
         });
         // The API always gives JSON except for category covers and music files which won't be handled by any script
         function __checkJSONResponse(response) {
-            if (response.ok) { response.json().then((json) => { Promise.resolve(json); }).error((error) => { Promise.reject(error); }); }
+            if (response.ok) { response.json().then((json) => { Promise.resolve(json); }).catch((error) => { Promise.reject(error); }); }
             else { Promise.reject(response); }
         }
-        request.then(__checkJSONResponse).error((error) => { Promise.reject(error); });
+        request.then(__checkJSONResponse).catch((error) => { Promise.reject(error); });
     }
-    new Promise(promiseFunc);
+    return new Promise(promiseFunc);
 }
 
 function refresh() {  window.location.reload(true); }
@@ -240,12 +240,12 @@ function updateCategoryToggles() {
 
 function requestCategoryAccess(event) {
     const id = event.currentTarget.dataset.categoryId;
-    if (id !== undefined) { API('POST', '/api/category/personal?id=' + id).then(refresh).error(refresh); }
+    if (id !== undefined) { API('POST', '/api/category/personal?id=' + id).then(refresh).catch(refresh); }
 }
 
 function revokeCategoryAccess(event) {
     const id = event.currentTarget.dataset.categoryId;
-    if (id !== null) { API('DELETE', '/api/category/personal?id=' + id).then(refresh).error(refresh); }
+    if (id !== null) { API('DELETE', '/api/category/personal?id=' + id).then(refresh).catch(refresh); }
 }
 
 function __prepareCategoryFormData(form_data) {
@@ -259,13 +259,13 @@ function editCategory(event) {
         const id = form.dataset.categoryId, form_data = new FormData(form);
         if (id !== undefined) {
             __prepareCategoryFormData(form_data);
-            if (form_data.get('cover').name === '') { API('PUT', '/api/category/resource?id=' + id, form_data).then(goBack).error(refresh); }
+            if (form_data.get('cover').name === '') { API('PUT', '/api/category/resource?id=' + id, form_data).then(goBack).catch(refresh); }
             else { // We need to remove the cover from the form for now. We will send it separately.
                 const cover_form = new FormData();
                 cover_form.set('cover', form_data.get('cover'));
                 form_data.delete('cover');
                 // We want to refresh either when one request fails or when both are done
-                Promise.all([API('PUT', '/api/category/resource?id=' + id, form_data), API('POST', '/api/category/cover?id=' + id, cover_form)]).then(refresh).error(refresh);
+                Promise.all([API('PUT', '/api/category/resource?id=' + id, form_data), API('POST', '/api/category/cover?id=' + id, cover_form)]).then(refresh).catch(refresh);
             }
         }
     }
@@ -276,19 +276,19 @@ function newCategory(event) {
     if (form !== null) {
         const form_data = new FormData(form);
         __prepareCategoryFormData(form_data);
-        if (form_data.get('cover').name === '') { API('POST', '/api/category/resource', form_data).then(goBack).error(refresh); }
+        if (form_data.get('cover').name === '') { API('POST', '/api/category/resource', form_data).then(goBack).catch(refresh); }
         else { // We need to remove the cover from the form for now. We will send afterwards once the category exists.
             const cover_form = new FormData();
             cover_form.set('cover', form_data.get('cover'));
             form_data.delete('cover');
-            API('POST', '/api/category/resource', form_data).then((json) => { API('POST', '/api/category/cover?id=' + json.id, cover_form).then(goBack).error(refresh); }).error(refresh);
+            API('POST', '/api/category/resource', form_data).then((json) => { API('POST', '/api/category/cover?id=' + json.id, cover_form).then(goBack).error(refresh); }).catch(refresh);
         }
     }
 }
 
 function deleteCategory(event) {
     const id = event.currentTarget.dataset.categoryId;
-    if (id !== null) { API('DELETE', '/api/category/resource?id=' + id).then(goBack).error(refresh); }
+    if (id !== null) { API('DELETE', '/api/category/resource?id=' + id).then(goBack).catch(refresh); }
 }
 
 
