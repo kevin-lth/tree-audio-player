@@ -387,9 +387,9 @@ function loadSelectedCategories() {
             function loadMusics(result) {
                 const category_result = result[0], musics_result = result[1];
                 categories_result.push(__createPlaylistCategory(category_result, musics_result));
-                if (category_result.length === selected_categories.length) { // We can't check i directly, since we are in a callback we cannot verify which one will be the last
+                if (categories_result.length === selected_categories.length) { // We can't check i directly, since we are in a callback we cannot verify which one will be the last
                     categories_result.sort(__sortCategoryPlaylist);
-                    for (let j = 0; j < category_result.length; j++) {
+                    for (let j = 0; j < categories_result.length; j++) {
                         selected_category_list.appendChild(categories_result[j]);
                     }
                 }
