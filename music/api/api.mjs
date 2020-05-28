@@ -21,20 +21,20 @@ export function getAPI() {
 
     // Putting this check here allows us to remove it from all API calls which check the session - that is most of them
     async function __checkSession(token) {
-        if (!(await __prepareConnection())) { return newAPIResponse(null, internalServerError); }
+        if (!(await __prepareConnection())) { return newAPIResponse({}, internalServerError); }
         const session = await connection.getSessionFromToken(token);
-        if (session === null) { return newAPIResponse(null, unauthorized); }
+        if (session === null) { return newAPIResponse({}, unauthorized); }
         else { return newAPIResponse(session, OK); }
     }
 
     // Returns the username if the token is valid.
     async function getSessionStatus(token) {
-        if (!(await __prepareConnection())) { return newAPIResponse(null, internalServerError); } // We don't use checkSession because we want a normal response if the server works but the session doesn't exist
+        if (!(await __prepareConnection())) { return newAPIResponse({}, internalServerError); } // We don't use checkSession because we want a normal response if the server works but the session doesn't exist
         const session = await connection.getSessionFromToken(token);
         if (session === null) { return newAPIResponse({ username: null }, OK); }
         else {
             const account = await connection.getAccount(session.account_id);
-            if (account === null) { return newAPIResponse(null, internalServerError); }
+            if (account === null) { return newAPIResponse({}, internalServerError); }
             else { return newAPIResponse({ username: account.username }, OK); } 
         }
     }
@@ -44,35 +44,35 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const account = await connection.getAccount(account_id);
-            if (account === null) { return newAPIResponse(null, notFound); }
+            if (account === null) { return newAPIResponse({}, notFound); }
             else { return newAPIResponse({ username: account.username }, OK); } 
         }
     }
 
     async function registerAccount(token, account) {
-        if (!allowRegistration) { return newAPIResponse(null, notFound); }
+        if (!allowRegistration) { return newAPIResponse({}, notFound); }
         
         const check_session = await __checkSession(token);
         if (check_session.response === null) { return check_session; }
         else {
             const account_id = await connection.createAccount(account);
-            if (account_id === -1) { return newAPIResponse(null, forbidden); } // The account must already exist
+            if (account_id === -1) { return newAPIResponse({}, forbidden); } // The account must already exist
             else { return newAPIResponse({ id : account_id }, OK); }
         }
     }
 
     async function loginAccount(token, account) {
-        if (!(await __prepareConnection())) { return newAPIResponse(null, internalServerError); }
+        if (!(await __prepareConnection())) { return newAPIResponse({}, internalServerError); }
         const valid_account_id = await connection.checkAccountCredentials(account);
-        if (valid_account_id === -1) { return newAPIResponse(null, unauthorized); }
+        if (valid_account_id === -1) { return newAPIResponse({}, unauthorized); }
         else {
             const session = await connection.getSessionFromToken(token);
             if (session !== null) { 
                 const revoked = await connection.revokeSession(session.session_id);
-                if (!revoked) { return newAPIResponse(null, internalServerError); }
+                if (!revoked) { return newAPIResponse({}, internalServerError); }
             }
             const new_token = await connection.createSession(valid_account_id);
-            if (new_token === null) { return newAPIResponse(null, internalServerError); }
+            if (new_token === null) { return newAPIResponse({}, internalServerError); }
             else { return newAPIResponse({ token: new_token }, OK); }
             
         }
@@ -84,8 +84,8 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const done = await connection.revokeSession(session.session_id);
-            if (!done) { return newAPIResponse(null, internalServerError); }
-            else { return newAPIResponse(null, OK); }
+            if (!done) { return newAPIResponse({}, internalServerError); }
+            else { return newAPIResponse({}, OK); }
         }
     }
     
@@ -95,16 +95,16 @@ export function getAPI() {
         else {
             const session = check_session.response;
             if (parent_category_id !== undefined && 
-                !(await connection.checkCategoryOwnership(parent_category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                !(await connection.checkCategoryOwnership(parent_category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const category_id = await connection.createCategory(id_less_category, session.account_id);
-            if (category_id === -1) { return newAPIResponse(null, badRequest); }
+            if (category_id === -1) { return newAPIResponse({}, badRequest); }
             else {
                 if (parent_category_id !== undefined && parent_category_id !== -1) { // We also need to handle adding the parent.
                     const done = await connection.bindCategoryToParent(category_id, parent_category_id);
                     if (!done) { // Let's try to clean things and remove the category we just created..
                         const cleaned = await connection.deleteCategory(category_id);
                         if (!cleaned) { console.log('[API] Problem encountered when adding a category : setting its parent failed, and deleting it also failed. This should not occur, please check the database for any issues.'); }
-                        return newAPIResponse(null, badRequest);
+                        return newAPIResponse({}, badRequest);
                     }
                 }
                 return newAPIResponse({ id : category_id }, OK);
@@ -117,10 +117,10 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             else {
                 const category = await connection.getCategory(category_id, include_children, only_direct_children);
-                if (category === null) { return newAPIResponse(null, notFound); }
+                if (category === null) { return newAPIResponse({}, notFound); }
                 else { return newAPIResponse(category, OK); }
             }
         }
@@ -133,13 +133,13 @@ export function getAPI() {
             const session = check_session.response;
             if (!(await connection.checkCategoryOwnership(category_id, session.account_id)) ||
                 (parent_category_id !== undefined && !(await connection.checkCategoryOwnership(parent_category_id, session.account_id)))) 
-                    { return newAPIResponse(null, unauthorized); }
+                    { return newAPIResponse({}, unauthorized); }
             const previous_category = await connection.getCategory(category_id); // We take the category just in case the parent ID is invalid and we have to rollback
-            if (previous_category === null) { return newAPIResponse(null, badRequest); }
+            if (previous_category === null) { return newAPIResponse({}, badRequest); }
             const updated = await connection.updateCategory(category_id, id_less_updated_category);
             if (!updated) { // This should not occur unless something is wrong with the database
                 console.log('[API] Problem encountered when updating a category : the category exists, but its update failed. However, the updated values were checked beforehand... Please check the database for any issues.');
-                return newAPIResponse(null, badRequest);
+                return newAPIResponse({}, badRequest);
             }
             else { 
                 if (parent_category_id !== null) {
@@ -152,10 +152,11 @@ export function getAPI() {
                     if (!done) { // Huh oh. Sure, the update went through, but changing the parent didn't work... Let's try rolling back the update.
                         const cleaned = await connection.updateCategory(category_id, previous_category);
                         if (!cleaned) { console.log('[API] Problem encountered when updating a category : setting its parent failed, and re-updating it with its previous values also did. This should not occur, please check the database for any issues.'); }
-                        return newAPIResponse(null, badRequest);
+                        console.log('update7');
+                        return newAPIResponse({}, badRequest);
                     }
                 }
-                return newAPIResponse(null, OK);
+                return newAPIResponse({}, OK);
             }
         }
     }
@@ -165,10 +166,10 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const done = await connection.deleteCategory(category_id);
-            if (!done) { return newAPIResponse(null, badRequest); }
-            else { return newAPIResponse(null, OK); }
+            if (!done) { return newAPIResponse({}, badRequest); }
+            else { return newAPIResponse({}, OK); }
         }
     }
     
@@ -177,15 +178,15 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const cover_url = await connection.getCategoryCoverURL(category_id);
             let cover;
-            if (cover_url === null) { return newAPIResponse(null, notFound); } // Shouldn't happen, except if we are an admin and are looking at an invalid category
+            if (cover_url === null) { return newAPIResponse({}, notFound); } // Shouldn't happen, except if we are an admin and are looking at an invalid category
             else if (cover_url === undefined) { cover = await getDefaultCategoryCoverStream(range); }
             else { cover = await getCategoryCoverStream(cover_url, range); }
             if (cover === null) { // The URL is known by the database but the file doesn't exist : there was most likely outside tampering.
                 console.log('[API] Problem encountered when getting a category cover : the URL is known by the database but the corresponding file doesn\'t exist. This should not occur, please check both the database and your file system for any issues.');
-                return newAPIResponse(null, internalServerError);
+                return newAPIResponse({}, internalServerError);
             } else {
                 let status_code = OK;
                 if (cover.partial) { status_code = partialContent; }
@@ -200,13 +201,13 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryOwnership(category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const cover_url = await processCategoryCover(temporary_url);
-            if (cover_url === null) { return newAPIResponse(null, badRequest); }
+            if (cover_url === null) { return newAPIResponse({}, badRequest); }
             else {
                 const done = await connection.setCategoryCoverURL(category_id, cover_url);
-                if (!done) { return newAPIResponse(null, internalServerError); }
-                else { return newAPIResponse(null, OK); }
+                if (!done) { return newAPIResponse({}, internalServerError); }
+                else { return newAPIResponse({}, OK); }
             }
         }
     }
@@ -216,7 +217,7 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const categories = await connection.getAllPublicCategories();
-            if (categories === null) { return newAPIResponse(null, internalServerError); }
+            if (categories === null) { return newAPIResponse({}, internalServerError); }
             else { return newAPIResponse(categories, OK); }
         }
     }
@@ -226,10 +227,10 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const done = await connection.grantCategoryAccess(category_id, session.account_id);
-            if (!done) { return newAPIResponse(null, badRequest); }
-            else { return newAPIResponse(null, OK); }
+            if (!done) { return newAPIResponse({}, badRequest); }
+            else { return newAPIResponse({}, OK); }
         }
     }
     
@@ -239,7 +240,7 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const categories = await connection.getAllPersonalCategories(session.account_id);
-            if (categories === null) { return newAPIResponse(null, internalServerError); }
+            if (categories === null) { return newAPIResponse({}, internalServerError); }
             else { return newAPIResponse(categories, OK); }
         }
     }
@@ -251,8 +252,8 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const done = await connection.revokeCategoryAccess(category_id, session.account_id); // We won't check for access : the DELETE won't do anything if you don't have access anyway
-            if (!done) { return newAPIResponse(null, badRequest); }
-            else { return newAPIResponse(null, OK); }
+            if (!done) { return newAPIResponse({}, badRequest); }
+            else { return newAPIResponse({}, OK); }
         }
     }
     
@@ -262,7 +263,7 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const categories = await connection.getAllOwnedCategories(session.account_id);
-            if (categories === null) { return newAPIResponse(null, internalServerError); }
+            if (categories === null) { return newAPIResponse({}, internalServerError); }
             else { return newAPIResponse(categories, OK); }
         }
     }
@@ -272,9 +273,9 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryAccess(category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const musics = await connection.getAllMusics(category_id, include_all_children);
-            if (musics === null) { return newAPIResponse(null, badRequest); }
+            if (musics === null) { return newAPIResponse({}, badRequest); }
             else { return newAPIResponse(musics, OK); }
         }
     }
@@ -283,9 +284,9 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (!(await connection.checkCategoryOwnership(id_less_music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+            if (!(await connection.checkCategoryOwnership(id_less_music.category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const music_id = await connection.createMusic(id_less_music, session.account_id);
-            if (music_id === -1) { return newAPIResponse(null, badRequest); }
+            if (music_id === -1) { return newAPIResponse({}, badRequest); }
             else { return newAPIResponse({ id : music_id }, OK); }
         }
     }
@@ -297,9 +298,9 @@ export function getAPI() {
             const session = check_session.response;
             // This is awkward : to check if we have access to the music, we have to check the category... and to do that, we need to get the music itself. 
             const music = await connection.getMusic(music_id);
-            if (music === null) { return newAPIResponse(null, notFound); }
+            if (music === null) { return newAPIResponse({}, notFound); }
             else { 
-                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
                 else { return newAPIResponse(music, OK); }
             }
         }
@@ -311,16 +312,16 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const previous_music = await connection.getMusic(music_id);
-            if (previous_music === null) { return newAPIResponse(null, badRequest); }
+            if (previous_music === null) { return newAPIResponse({}, badRequest); }
             if (!(await connection.checkCategoryOwnership(previous_music.category_id, session.account_id)) ||
                 !(await connection.checkCategoryOwnership(id_less_updated_music.category_id, session.account_id))) 
-                    { return newAPIResponse(null, unauthorized); }
+                    { return newAPIResponse({}, unauthorized); }
             const updated = await connection.updateMusic(music_id, id_less_updated_music);
             if (!updated) { // This should not occur unless something is wrong with the database
                 console.log('[API] Problem encountered when updating a music : the music exists, but its update failed. However, the updated values were checked beforehand... Please check the database for any issues.');
-                return newAPIResponse(null, badRequest);
+                return newAPIResponse({}, badRequest);
             }
-            else { return newAPIResponse(null, OK); }
+            else { return newAPIResponse({}, OK); }
         }
     }
     
@@ -330,13 +331,13 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const music = await connection.getMusic(music_id);
-            if (music === null) { return newAPIResponse(null, notFound); }
+            if (music === null) { return newAPIResponse({}, notFound); }
             else { 
-                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
                 else {
                     const done = await connection.deleteMusic(music_id);
-                    if (!done) { return newAPIResponse(null, badRequest); }
-                    else { return newAPIResponse(null, OK); }
+                    if (!done) { return newAPIResponse({}, badRequest); }
+                    else { return newAPIResponse({}, OK); }
                 }
             }
         }
@@ -349,17 +350,17 @@ export function getAPI() {
             const session = check_session.response;
             if (format === undefined || format === null) { format = default_music_format; }
             const music = await connection.getMusic(music_id);
-            if (music === null) { return newAPIResponse(null, notFound); }
+            if (music === null) { return newAPIResponse({}, notFound); }
             else { 
-                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
+                if (!(await connection.checkCategoryAccess(music.category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
                 const formats_and_urls = await connection.getMusicFormatsAndURLs(music_id);
-                if (formats_and_urls === null) { return newAPIResponse(null, notFound); }
+                if (formats_and_urls === null) { return newAPIResponse({}, notFound); }
                 const file_url = formats_and_urls[format];
-                if (file_url === undefined || file_url === null) { return newAPIResponse(null, notFound); }
+                if (file_url === undefined || file_url === null) { return newAPIResponse({}, notFound); }
                 let file = await getMusicFileWithFormat(file_url, range, format);
                 if (file === null) { // The URL is known by the database but the file doesn't exist : there was most likely outside tampering.
                     console.log('[API] Problem encountered when getting a music file : the URL is known by the database but the corresponding file doesn\'t exist. This should not occur, please check both the database and your file system for any issues.');
-                    return newAPIResponse(null, internalServerError);
+                    return newAPIResponse({}, internalServerError);
                 } else {
                     let status_code = OK;
                     if (file.partial) { status_code = partialContent; }
@@ -375,22 +376,22 @@ export function getAPI() {
         else {
             const session = check_session.response;
             const music = await connection.getMusic(music_id);
-            if (music === null) { return newAPIResponse(null, notFound); }
+            if (music === null) { return newAPIResponse({}, notFound); }
             else { 
-                if (!(await connection.checkCategoryOwnership(music.category_id, session.account_id))) { return newAPIResponse(null, unauthorized); }
-                const temporary_api_response = newAPIResponse(null, accepted);
+                if (!(await connection.checkCategoryOwnership(music.category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
+                const temporary_api_response = newAPIResponse({}, accepted);
                 execute_before_processing(temporary_api_response);
                 const file_result = await processMusicFile(temporary_url);
-                if (file_result === null || file_result.duration === -1) { return newAPIResponse(null, internalServerError); }
+                if (file_result === null || file_result.duration === -1) { return newAPIResponse({}, internalServerError); }
                 else {
                     const keys = Object.keys(file_result.formats);
                     for (let i = 0; i < keys.length; i++) {
                         let done = await connection.removeMusicFormat(music_id, keys[i]);
                         if (done) { done = await connection.addMusicFormatAndURL(music_id, keys[i], file_result.formats[keys[i]]); }
                         if (done) { done = await connection.setMusicDuration(music_id, file_result.duration); }
-                        if (!done) { return newAPIResponse(null, internalServerError); }
+                        if (!done) { return newAPIResponse({}, internalServerError); }
                     }
-                    return newAPIResponse(null, OK);
+                    return newAPIResponse({}, OK);
                 }
 
             }
