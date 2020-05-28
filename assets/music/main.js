@@ -106,15 +106,17 @@ function API(method, url, body = null) { // We are using fetch because we don't 
         });
         // The API always gives JSON except for category covers and music files which won't be handled by any script
         function __checkJSONResponse(response) {
-            if (response.ok) { response.json().then((json) => { Promise.resolve(json); }).catch((error) => { Promise.reject(error); }); }
-            else { Promise.reject(response); }
+            if (response.ok) {
+                response.json().then((json) => { resolve(json); }).catch((error) => { reject(error); });
+            }
+            else { reject(response); }
         }
-        request.then(__checkJSONResponse).catch((error) => { Promise.reject(error); });
+        request.then(__checkJSONResponse).catch((error) => { reject(error); });
     }
     return new Promise(promiseFunc);
 }
 
-function refresh() {  window.location.reload(true); }
+function refresh() { window.location.reload(true); }
 
 function goBack() { history.back(); }
 
@@ -124,13 +126,14 @@ function gotoPersonalCategories() { window.location.href = '/html/category/perso
 
 // Audio Player
 
-function __loadMusic() {
-    const sources = document.querySelectorAll('.audio-source');
+function __loadMusic(music_id) {
+    const audio = document.querySelector('#audio-player'), sources = document.querySelectorAll('.audio-source');
     for (let i = 0; i < sources.length; i++) {
         const format = sources[i].dataset.audioFormat;
         sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
     }
     audio.currentTime = current_audio_time;
+    audio.load();
     updateProgressBar();
 }
 
@@ -138,11 +141,11 @@ function updateMusic() {
     const audio = document.querySelector('#audio-player');
     if (audio !== null && current_music_index < selected_musics.length) {
         const music_id = selected_musics[current_music_index];
-        if (music_info[music_id] !== undefined) { __loadMusic(); }
+        if (music_info[music_id] !== undefined) { __loadMusic(music_id); }
         else {
             function addMusicInfoAndLaunchMusic(json) {
                 music_info[music_id] = json;
-                __loadMusic();
+                __loadMusic(music_id);
             }
             API('GET', '/api/music/resource?id=' + music_id).then(addMusicInfoAndLaunchMusic);
         }
@@ -174,7 +177,7 @@ function previousMusic() {
 }
 
 function nextMusic() {
-    if (current_music_index < selected_musics.length) { current_music_index++; }
+    if (current_music_index < selected_musics.length - 1) { current_music_index++; }
     else { current_music_index = 0; }
     current_audio_time = 0;
     updateMusic();
@@ -202,7 +205,7 @@ function setCurrentTime(event) {
     current_audio_time = event.currentTarget.value;
     const audio = document.querySelector('#audio-player');
     if (audio !== null) { audio.currentTime = current_audio_time; }
-    saveCurrentTime();
+    saveToLocalStorage(['current_audio_time']);
 }
 
 // Login / Logout
@@ -238,6 +241,20 @@ function updateCategoryToggles() {
     }
 }
 
+// A selected category implicitely also includes all of his children' musics. However, we won't deal with any recursivity here, as the API will serve us all the relevant musics with just a single ID.
+function toggleCategory(event) {
+    const category_id = event.currentTarget.dataset.categoryId, index = selected_categories.indexOf(category_id);
+    if (index === -1) { // We need to select the category
+        // We do not save any info. That means that connections will be slower for clients with don't support service workers. This also means that the list always stays up to date.
+        selected_categories.push(category_id);
+        event.currentTarget.classList.add('category-selected');
+    } else { // We need to unselect the category. We won't unselect the selected musics : users might want to open categories, select their musics, and close them to not clog up their interface in the playlist page.
+        selected_categories.splice(index, 1);
+        event.currentTarget.classList.remove('category-selected');
+    }
+    saveToLocalStorage(['selected_categories']);
+}
+
 function requestCategoryAccess(event) {
     const id = event.currentTarget.dataset.categoryId;
     if (id !== undefined) { API('POST', '/api/category/personal?id=' + id).then(refresh).catch(refresh); }
@@ -251,6 +268,7 @@ function revokeCategoryAccess(event) {
 function __prepareCategoryFormData(form_data) {
     if (form_data.get('is_public') === null || form_data.get('is_public') === undefined) { form_data.set('is_public', 'false'); } // When HTML checkboxes are unchecked, they do not send any value.
     if (form_data.get('parent_id') === '') { form_data.delete('parent_id'); } // The server doesn't accept a non-integer value, and this string means we should not change the parent : we remove it from the form.
+    form_data.delete('cover');
 }
 
 function editCategory(event) {
@@ -258,14 +276,14 @@ function editCategory(event) {
     if (form !== null) {
         const id = form.dataset.categoryId, form_data = new FormData(form);
         if (id !== undefined) {
+            const cover = form_data.get('cover');
             __prepareCategoryFormData(form_data);
-            if (form_data.get('cover').name === '') { API('PUT', '/api/category/resource?id=' + id, form_data).then(goBack).catch(refresh); }
+            if (cover.name === '') { API('PUT', '/api/category/resource?id=' + id, form_data).then(goBack).catch(refresh); }
             else { // We need to remove the cover from the form for now. We will send it separately.
                 const cover_form = new FormData();
-                cover_form.set('cover', form_data.get('cover'));
-                form_data.delete('cover');
+                cover_form.set('cover', cover);
                 // We want to refresh either when one request fails or when both are done
-                Promise.all([API('PUT', '/api/category/resource?id=' + id, form_data), API('POST', '/api/category/cover?id=' + id, cover_form)]).then(refresh).catch(refresh);
+                Promise.all([API('PUT', '/api/category/resource?id=' + id, form_data), API('POST', '/api/category/cover?id=' + id, cover_form)]).then(goBack).catch(refresh);
             }
         }
     }
@@ -274,13 +292,13 @@ function editCategory(event) {
 function newCategory(event) {
     const form = document.querySelector('#category-new-form');
     if (form !== null) {
-        const form_data = new FormData(form);
+        const form_data = new FormData(form)
+        const cover = form_data.get('cover');
         __prepareCategoryFormData(form_data);
         if (form_data.get('cover').name === '') { API('POST', '/api/category/resource', form_data).then(goBack).catch(refresh); }
-        else { // We need to remove the cover from the form for now. We will send afterwards once the category exists.
+        else { // We will send the cover afterwards once the category exists.
             const cover_form = new FormData();
-            cover_form.set('cover', form_data.get('cover'));
-            form_data.delete('cover');
+                cover_form.set('cover', cover);
             API('POST', '/api/category/resource', form_data).then((json) => { API('POST', '/api/category/cover?id=' + json.id, cover_form).then(goBack).error(refresh); }).catch(refresh);
         }
     }
@@ -288,50 +306,103 @@ function newCategory(event) {
 
 function deleteCategory(event) {
     const id = event.currentTarget.dataset.categoryId;
-    if (id !== null) { API('DELETE', '/api/category/resource?id=' + id).then(goBack).catch(refresh); }
+    if (id !== null) { console.log(id); API('DELETE', '/api/category/resource?id=' + id).then(goBack).catch(refresh); }
 }
 
 
 // Music
 
-// Playlist
 
-// Settings
-// TODO : Add settings
-
-// TODO: Below
-
-function loadSelectedCategories() {
-    const selected_category_list = document.querySelector('.selected-category-list');
-    if (selected_category_list !== null) { // We are on the playlist page
-        const category_result = [];
-        for (let i = 0; i < selected_categories.length; i++) {
-            function loadMusics(response) {
-                response.json().then((category_json) => {
-                    function addToDom(response2) {
-                        response2.json().then((musics_json) => {
-                            const result = createPlaylistCategory(category_json, musics_json);
-                            for (let j = 0; j < musics_json.length; j++) {
-                                music_info[musics_json[j].id] = musics_json[j];
-                            }
-                            category_result.push(result);
-                            if (category_result.length === selected_categories.length) { // We can't check i directly, since we are in a callback we cannot verify which one will be the last
-                                category_result.sort(__sortCategoryPlaylist);
-                                for (let j = 0; j < category_result.length; j++) {
-                                    selected_category_list.appendChild(category_result[j]);
-                                }
-                            }
-                        });
-                    }
-                    sendRequestToAPI('GET', '/api/category/music?id=' + selected_categories[i], null, addToDom, nothing);
-                });
-            }
-            sendRequestToAPI('GET', '/api/category/resource?id=' + selected_categories[i], null, loadMusics, nothing);
+function editMusic(event) {
+    const form = document.querySelector('#music-edit-form');
+    if (form !== null) {
+        const id = form.dataset.musicId, form_data = new FormData(form);
+        // The tags are sent as a stringified Array
+        const tags = [], span_tags = document.querySelectorAll('.music-edit-tag');
+        for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
+        form_data.append('tags', JSON.stringify(tags));
+        if (form_data.get('file').name === '') { API('PUT', '/api/music/resource?id=' + id, form_data).then(goBack).catch(refresh); }
+        else { // We need to remove the cover from the form for now. We will send it separately.
+            const file_form = new FormData();
+            file_form.set('file', form_data.get('file'));
+            form_data.delete('file');
+            Promise.all([API('PUT', '/api/music/resource?id=' + id, form_data), API('POST', '/api/music/file?id=' + id, file_form)]).then(goBack).catch(refresh);
         }
     }
 }
 
-function createPlaylistCategory(category, musics) {
+function newMusic(event) {
+    const form = document.querySelector('#music-new-form');
+    if (form !== null) {
+        const form_data = new FormData(form);
+        // The tags are sent as a stringified Array
+        const tags = [], span_tags = document.querySelectorAll('.music-new-tag');
+        for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
+        form_data.append('tags', JSON.stringify(tags));
+        if (form_data.get('file').name === '') { API('POST', '/api/music/resource', form_data).then(goBack).catch(refresh); }
+        else { // We need to remove the cover from the form for now. We will send it separately.
+            const file_form = new FormData();
+            file_form.set('file', form_data.get('file'));
+            form_data.delete('file');
+            API('POST', '/api/music/resource', form_data).then((json) => { API('POST', '/api/music/file?id=' + json.id, file_form).then(goBack).catch(refresh); }).catch(refresh);
+        }
+    }
+}
+
+function deleteMusic(event) {
+    const id = event.currentTarget.dataset.musicId;
+    if (id !== null) { API('DELETE', '/api/music/resource?id=' + id).then(refresh).catch(refresh); }
+}
+
+// Music - Tags
+
+function addEditTag() { addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
+
+function addNewTag() { addTag(document.querySelector('#music-new-tag-input'), 'music-new-tag'); }
+
+function addTag(input, unique_class) {
+    if (input !== null) {
+        const tag = document.createElement('span');
+        tag.classList.add(unique_class);
+        tag.classList.add('music-tag');
+        tag.dataset.tag = input.value;
+        tag.textContent = input.value;
+        tag.addEventListener('click', removeTag);
+        input.parentNode.prepend(tag);
+        input.value = '';
+    }
+}
+
+function removeTag(event) {
+    event.currentTarget.remove();
+}
+
+// Playlist
+
+function loadSelectedCategories() {
+    const selected_category_list = document.querySelector('.selected-category-list');
+    if (selected_category_list !== null) { // We are on the playlist page
+        const categories_result = [];
+        for (let i = 0; i < selected_categories.length; i++) {
+            function loadMusics(result) {
+                const category_result = result[0], musics_result = result[1];
+                categories_result.push(__createPlaylistCategory(category_result, musics_result));
+                if (category_result.length === selected_categories.length) { // We can't check i directly, since we are in a callback we cannot verify which one will be the last
+                    categories_result.sort(__sortCategoryPlaylist);
+                    for (let j = 0; j < category_result.length; j++) {
+                        selected_category_list.appendChild(categories_result[j]);
+                    }
+                }
+                for (let j = 0; j < musics_result.length; j++) {
+                    music_info[musics_result[j].id] = musics_result[j]; // We store music info to prevent sending unnecessary requests
+                }
+            }
+            Promise.all([API('GET', '/api/category/resource?id=' + selected_categories[i]), API('GET', '/api/category/music?id=' + selected_categories[i])]).then(loadMusics);
+        }
+    }
+}
+
+function __createPlaylistCategory(category, musics) {
     const category_article = document.createElement('article');
     category_article.classList.add('playlist-category');
     category_article.dataset.categoryId = category.id;
@@ -387,92 +458,7 @@ function __sortMusicPlaylist(music_li1, music_li2) {
     else { return music_li1.dataset.track - music_li2.dataset.track } // Not equal, the difference can determine both cases
 }
 
-
-
-
-
-function addEditTag() { addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
-
-function addNewTag() { addTag(document.querySelector('#music-new-tag-input'), 'music-new-tag'); }
-
-function addTag(input, unique_class) {
-    if (input !== null) {
-        const tag = document.createElement('span');
-        tag.classList.add(unique_class);
-        tag.classList.add('music-tag');
-        tag.dataset.tag = input.value;
-        tag.textContent = input.value;
-        tag.addEventListener('click', removeTag);
-        input.parentNode.prepend(tag);
-        input.value = '';
-    }
-}
-
-function removeTag(event) {
-    event.currentTarget.remove();
-}
-
-function editMusic(event) {
-    const form = document.querySelector('#music-edit-form');
-    if (form !== null) {
-        const id = form.dataset.musicId, form_data = new FormData(form);
-        // The tags are sent as a stringified Array
-        const tags = [], span_tags = document.querySelectorAll('.music-edit-tag');
-        for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
-        form_data.append('tags', JSON.stringify(tags));
-        console.log(form_data, form_data.get('file'));
-        if (form_data.get('file').name === '') { sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, goBack, refresh); }
-        else { // We need to remove the cover from the form for now. We will send it separately.
-            const file_form = new FormData();
-            file_form.set('file', form_data.get('file'));
-            form_data.delete('file');
-            sendRequestToAPI('PUT', '/api/music/resource?id=' + id, form_data, nothing, nothing); // TODO : An error occured
-            sendRequestToAPI('POST', '/api/music/file?id=' + id, file_form, goBack, refresh);
-        }
-    }
-}
-
-function newMusic(event) {
-    const form = document.querySelector('#music-new-form');
-    if (form !== null) {
-        const form_data = new FormData(form);
-        // The tags are sent as a stringified Array
-        const tags = [], span_tags = document.querySelectorAll('.music-new-tag');
-        for (let i = 0; i < span_tags.length; i++) { tags.push(span_tags[i].dataset.tag); }
-        form_data.append('tags', JSON.stringify(tags));
-        if (form_data.get('file').name === '') { sendRequestToAPI('POST', '/api/music/resource', form_data, goBack, refresh); }
-        else { // We need to remove the cover from the form for now. We will send it separately.
-            const file_form = new FormData();
-            file_form.set('file', form_data.get('file'));
-            form_data.delete('file');
-            function afterSuccessfulPost(response) {
-                response.json().then( (json) => {
-                    sendRequestToAPI('POST', '/api/music/file?id=' + json.id, file_form, goBack, refresh);
-                }).error(refresh);
-            }
-            sendRequestToAPI('POST', '/api/music/resource', form_data, afterSuccessfulPost, refresh); // TODO : An error occured
-        }
-    }
-}
-
-function deleteMusic(event) {
-    const id = event.currentTarget.dataset.musicId;
-    if (id !== null) { sendRequestToAPI('DELETE', '/api/music/resource?id=' + id, null, refresh, refresh); }
-}
-
-// A selected category implicitely also includes all of his children' musics. However, we won't deal with any recursivity here, as the API will serve us all the relevant musics with just a single ID.
-function toggleCategory(event) {
-    const category_id = event.currentTarget.dataset.categoryId, index = selected_categories.indexOf(category_id);
-    if (index === -1) { // We need to select the category
-        // We do not save any info. That means that connections will be slower for clients with don't support service workers. This also means that the list always stays up to date.
-        selected_categories.push(category_id);
-        event.currentTarget.classList.add('category-selected');
-    } else { // We need to unselect the category. We won't unselect the selected musics : users might want to open categories, select their musics, and close them to not clog up their interface in the playlist page.
-        selected_categories.splice(index, 1);
-        event.currentTarget.classList.remove('category-selected');
-    }
-    saveToLocalStorage();
-}
+// Playlist - Audio Player link
 
 function addMusicToPlayer(event) {
     const id = event.currentTarget.dataset.musicId;
@@ -489,6 +475,9 @@ function removeMusicFromPlayer(event) {
         saveToLocalStorage();
     }
 }
+
+// Settings
+// TODO : Add settings
 
 // Load
 
