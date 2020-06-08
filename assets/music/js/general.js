@@ -15,13 +15,25 @@ const music_info = {};
 const active_playlist_musics = {}; // This is redundant with selected_musics, but it allows to cache HTML Elements to prevent searching for them again
 
 // Recurring querySelector
-let dom_audio, dom_audio_sources, dom_audio_progress_bar, dom_tab_selected_musics;
+let dom_audio, dom_audio_sources, dom_audio_progress_bar, dom_audio_title, dom_audio_duration, dom_tab_selected_musics;
 
 function loadQuerySelectors() {
     dom_audio = document.getElementById('audio-player');
     dom_audio_sources = document.getElementsByClassName('audio-source');
     dom_audio_progress_bar = document.getElementById('audio-progress-bar');
+    dom_audio_title = document.getElementById('audio-title');
+    dom_audio_duration = document.getElementById('audio-duration');
     dom_tab_selected_musics = document.getElementById('tab-selected-musics');
+}
+
+// Util
+
+function printDuration(duration) {
+    if (duration > 3599) { duration = 3599; } // We cap at 59:99
+    const seconds = duration % 60;
+    const minutes = (duration - seconds) / 60;
+    if (seconds < 10) { return `${minutes}:0${seconds}`; }
+    else { return `${minutes}:${seconds}`; }
 }
 
 // Event handlers
@@ -138,22 +150,24 @@ function gotoPersonalCategories() { window.location.href = '/html/category/perso
 
 // Audio Player
 
-function __updateSources(music_id) {
+function __updateSourcesAndProgressBarInfo(music_id) {
     for (let i = 0; i < dom_audio_sources.length; i++) {
         const format = dom_audio_sources[i].dataset.audioFormat;
         dom_audio_sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
     }
+    const json = music_info[music_id];
     if ('mediaSession' in navigator) {
-        const json = music_info[music_id];
         navigator.mediaSession.metadata = new MediaMetadata({
             title: json.full_name,
             artist: json.prefix,
             artwork: [{ src: "/api/category/cover?id=" + json.category_id, sizes: '512x512', type: 'image/png' }]
         });
     }
+    dom_audio_title.textContent = json.prefix +  ' - ' + json.full_name;
+    dom_audio_duration.textContent = printDuration(json.duration);
 }
 
-function __disableSources() {
+function __disableSourcesAndProgressBarInfo() {
     for (let i = 0; i < dom_audio_sources.length; i++) {
         const format = dom_audio_sources[i].dataset.audioFormat;
         dom_audio_sources[i].src = '';
@@ -161,6 +175,8 @@ function __disableSources() {
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({});
     }
+    dom_audio_title.textContent = '';
+    dom_audio_duration.textContent = '';
 }
 
 function __launchMusic() {
@@ -181,10 +197,10 @@ function updateMusic() {
     if (has_music_changed) {
         if (selected_musics.length > 0 && current_music_index < selected_musics.length) {
             const music_id = selected_musics[current_music_index];
-            if (music_info[music_id] !== undefined) { __updateSources(music_id); __launchMusic(); }
-            else { API('GET', '/api/music/resource?id=' + music_id).then((json) => { music_info[music_id] = json; __updateSources(music_id); __launchMusic(); }); }
+            if (music_info[music_id] !== undefined) { __updateSourcesAndProgressBarInfo(music_id); __launchMusic(); }
+            else { API('GET', '/api/music/resource?id=' + music_id).then((json) => { music_info[music_id] = json; __updateSourcesAndProgressBarInfo(music_id); __launchMusic(); }); }
         }
-        else { __disableSources(); __launchMusic(); } // This should only happen when the player has no music
+        else { __disableSourcesAndProgressBarInfo(); __launchMusic(); } // This should only happen when the player has no music
     }
 }
 
@@ -302,16 +318,17 @@ function __createMusic(music) {
     const music_li = document.createElement('li');
     if (selected_musics.indexOf(music.id) !== -1) { music_li.classList.add('active'); }
     music_li.dataset.categoryId = music.category_id; music_li.dataset.musicId = music.id; music_li.dataset.title = music.full_name; music_li.dataset.track = music.track;
-    const music_prefix = document.createElement('span'), music_track = document.createElement('span'), music_title = document.createElement('span'), music_tags = document.createElement('span');
+    const music_prefix = document.createElement('span'), music_track = document.createElement('span'), music_title = document.createElement('span'), music_duration = document.createElement('span'), music_tags = document.createElement('span');
     music_prefix.classList.add('music-prefix'); music_prefix.textContent = music.prefix;
     music_track.classList.add('music-track'); music_track.textContent = music.track;
     music_title.classList.add('music-full-name'); music_title.textContent = music.full_name;
+    music_duration.classList.add('music-duration'); music_duration.textContent = printDuration(music.duration);
     for (let k = 0; k < music.tags.length; k++) {
         const music_tag = document.createElement('span');
         music_tag.classList.add('music-tag'); music_tag.textContent = music.tags[k];
         music_tags.appendChild(music_tag);
     }
-    music_li.appendChild(music_prefix); music_li.appendChild(music_track); music_li.appendChild(music_title); music_li.appendChild(music_tags);
+    music_li.appendChild(music_prefix); music_li.appendChild(music_track); music_li.appendChild(music_title); music_li.appendChild(music_tags); music_li.appendChild(music_duration);
     return music_li;
 }
 

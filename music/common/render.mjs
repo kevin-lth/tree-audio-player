@@ -330,7 +330,7 @@ export function newRender(bindings) {
                 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-GB" xml:lang="en-GB">
                     <head>
                         <meta charset="UTF-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1" />
                         <title>${title_prefix} - ${title_suffix}</title>
                         <link rel="preload" href="/assets/main.css" as="style" />
                         <link rel="preload" href="/assets/general.js" as="script" />
@@ -361,11 +361,13 @@ export function newRender(bindings) {
         const session_status = await bindings.getSessionStatus(token);
         const logged = session_status.http_code === OK && session_status.response.username !== null;
          // We don't use a form with POST because that would redirect to the whole page to the API, which we don't want. We will handle logout with javascript.
-        return `<a href="/html" id="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" /></a>
-                <span id="header-title">Tree Audio Player</span>
-                <span id="header-hello">Hello, ${logged ? `<span id="header-username">${session_status.response.username}</span>` : 'visitor'} !</span>
-                ${!logged ? '<a href="/html/login/" id="header-login">Login</a>' : ''}
-                ${logged ? '<span id="header-logout">Logout</span>' : ''}`;
+        return `<a href="/html/" id="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" /></a>
+                <h1 id="header-title">Tree Audio Player</h1>
+                <span id="header-details">
+                    <span id="header-hello">Hello, ${logged ? `<span id="header-username">${session_status.response.username}</span>` : 'visitor'} !</span>
+                    ${!logged ? '<a href="/html/login/" id="header-login">Login</a>' : ''}
+                    ${logged ? '<span id="header-logout">Logout</span>' : ''}
+                </span>`;
     }
     
     function renderNavElement(page, selected_page, href, svg_link, text, show_text) {
@@ -439,15 +441,17 @@ export function newRender(bindings) {
         return `<audio id="audio-player" autoplay="autoplay" preload="auto">
                     ${sources}
                 </audio>
-                <span id="audio-category"></span>
-                <span id="audio-music"></span>
                 <div id="audio-commands">
                     <button id="audio-previous" class="audio-play">Previous</button>
                     <button id="audio-play-stop">Play/Stop</button>
                     <button id="audio-next">Next</button>
                     <button id="audio-random">Randomize</button>
                 </div>
-                <input id="audio-progress-bar" type="range" min="0" max="0" step="0.1" />`;
+                <input id="audio-progress-bar" type="range" min="0" max="0" step="0.1" />
+                <div id="audio-info">
+                    <span id="audio-title"></span>
+                    <span id="audio-duration"></span>
+                </div>`;
     }
     
     async function renderAdditionalScript(file_name) {
