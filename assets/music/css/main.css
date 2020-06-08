@@ -111,9 +111,33 @@ main {
     background-color: #a87967;
 }
 
+#audio-commands {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 5%;
+    width: 90%;
+}
+
 #audio-progress-bar {
     width: 90%;
     margin: 8px 5%;
+}
+
+#audio-info {
+    display: flex;
+    width: 100%;
+}
+
+#audio-title {
+    margin-left: 10%;
+    width: 80%;
+    text-align: center;
+}
+
+#audio-duration {
+    width: 5%;
+    margin-right: 5%;
+    text-align: end;
 }
 
 ul {

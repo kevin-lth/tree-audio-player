@@ -429,6 +429,7 @@ export function newRender(bindings) {
     
     async function renderTab() {
         return `<button id="tab-remove-all">Remove all</button>
+                <button id="audio-random">Randomize</button>
                 <ul id="tab-selected-musics"></ul>`;
     }
 
@@ -445,7 +446,6 @@ export function newRender(bindings) {
                     <button id="audio-previous" class="audio-play">Previous</button>
                     <button id="audio-play-stop">Play/Stop</button>
                     <button id="audio-next">Next</button>
-                    <button id="audio-random">Randomize</button>
                 </div>
                 <input id="audio-progress-bar" type="range" min="0" max="0" step="0.1" />
                 <div id="audio-info">
