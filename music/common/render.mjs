@@ -426,7 +426,8 @@ export function newRender(bindings) {
     }
     
     async function renderTab() {
-        return `<ul id="tab-selected-musics"></ul>`;
+        return `<button id="tab-remove-all">Remove all</button>
+                <ul id="tab-selected-musics"></ul>`;
     }
 
     async function renderFooter() {

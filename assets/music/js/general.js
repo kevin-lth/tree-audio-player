@@ -63,6 +63,7 @@ function updateAllEventListeners() {
     updateEventListener('#audio-progress-bar', 'touchend', (event) => { __unpauseIfPlaying(event.currentTarget); });
     
     updateEventListener('#footer', 'click', toggleTab);
+    updateEventListener('#tab-remove-all', 'click', __removeAllMusicsFromTab);
     
     // Media Metadata
     if ('mediaSession' in navigator) {
@@ -192,7 +193,7 @@ function updateProgressBar() {
     dom_audio_progress_bar.max = duration;
     dom_audio_progress_bar.value = current_audio_time;
     if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-        navigator.mediaSession.setPositionState({ duration: duration, playbackRate: 1, position: current_audio_time });
+        navigator.mediaSession.setPositionState({ duration: duration, playbackRate: 1, position: Math.min(current_audio_time, duration) });
     }
 }
 
