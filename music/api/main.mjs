@@ -88,7 +88,7 @@ async function handleAccountProfile(method, token, parameters, request, response
             if (account_id === null) { bodyResponse(badRequest, '{}', response); return; }
             
             api_response = await API.getAccountProfile(token, account_id);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else if (method === 'HEAD') { bodylessResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             break;
@@ -108,7 +108,7 @@ async function handleAccountRegister(method, token, parameters, request, respons
             if (account === null) { bodyResponse(badRequest, '{}', response); await data.deleteAllTemporaryFiles(); return; } 
             
             api_response = await API.registerAccount(token, account);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, response); }
             else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             await data.deleteAllTemporaryFiles(); // Just in case the client upload files
             break;
@@ -127,7 +127,7 @@ async function handleAccountLogin(method, token, parameters, request, response) 
             if (account === null) { bodyResponse(badRequest, '{}', response); await data.deleteAllTemporaryFiles(); return; } 
             
             api_response = await API.loginAccount(token, account);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 response.setHeader('Set-Cookie', `token=${api_response.response.token}; Max-Age=1209600; Path=/; Secure; HttpOnly`); // 1209600 seconds = 2 weeks
                 bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response);
@@ -164,7 +164,7 @@ async function handleCategoryResource(method, token, parameters, request, respon
             if (category_id === null || include_children === null || only_direct_children === null) { bodyResponse(badRequest, '{}', response); return; }
             
             api_response = await API.getCategory(token, category_id, include_children, only_direct_children);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
@@ -184,7 +184,7 @@ async function handleCategoryResource(method, token, parameters, request, respon
             if (method === 'POST') { api_response = await API.addCategory(token, id_less_category, parent_category_id); }
             else if (category_id !== null) { api_response = await API.updateCategory(token, category_id, id_less_category, parent_category_id); }
             else { bodyResponse(badRequest, '{}', response); await data.deleteAllTemporaryFiles(); return; } // Method is PUT, but category_id is invalid
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else if (method === 'POST') { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); } // We need to send back the new category's ID
             else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             await data.deleteAllTemporaryFiles();
@@ -210,7 +210,7 @@ async function handleCategoryCover(method, token, parameters, request, response)
             if (!acceptTypes.isAccepted({ mimeType: 'image', mimeSubtype: 'png' })) { bodyResponse(notAcceptable, '{}', response); return; }
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
             api_response = await API.getCategoryCover(token, category_id, range);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else if (ifNoneMatch === api_response.response.etag) { bodylessStreamResponse(notModified, api_response.response, response); } // The cached version is valid : no need to send it again.
             else if (method === 'HEAD') { bodylesslessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
             else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }
@@ -236,7 +236,7 @@ async function handleCategoryPublic(method, token, parameters, request, response
     switch (method) {
         case 'HEAD': case 'GET':
             api_response = await API.getPublicCategories(token); // Since the result can become big, we implement ETag by hashing the API Response to limit bandwidth usage on refreshes.
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
@@ -257,7 +257,7 @@ async function handleCategoryPersonal(method, token, parameters, request, respon
     switch (method) {
         case 'HEAD': case 'GET':
             api_response = await API.getPersonalCategories(token);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
@@ -287,7 +287,7 @@ async function handleCategoryOwned(method, token, parameters, request, response)
     switch (method) {
         case 'HEAD': case 'GET':
             api_response = await API.getOwnedCategories(token);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
@@ -310,7 +310,7 @@ async function handleCategoryMusic(method, token, parameters, request, response)
             const category_id = newInt(parameters['id']), include_all_children = newBoolean(parameters['include_all_children']);
             
             api_response = await API.getAllCategoryMusics(token, category_id, include_all_children);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
@@ -333,7 +333,7 @@ async function handleMusicResource(method, token, parameters, request, response)
             if (music_id === null) { bodyResponse(badRequest, '{}', response); return; }
             
             api_response = await API.getMusic(token, music_id);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else {
                 const ifNoneMatch = newETagHeader(request.headers['if-none-match']);
                 const etag = crypto.createHash('sha1').update(JSON.stringify(api_response.response)).digest('hex');
@@ -358,7 +358,7 @@ async function handleMusicResource(method, token, parameters, request, response)
             else if (music_id !== null) { api_response = await API.updateMusic(token, music_id, id_less_music); }
             else { bodyResponse(badRequest, '{}', response); await data.deleteAllTemporaryFiles(); return; } // Method is PUT, but music_id is invalid
             
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else if (method === 'POST') { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); } // We need to send back the new music's ID
             else { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             await data.deleteAllTemporaryFiles();
@@ -385,7 +385,8 @@ async function handleMusicFile(method, token, parameters, request, response) {
             const range = newRangeHeader(request.headers['range']); // If it is null, we just send the whole file, so this is a valid case.
             const format = parameters['format']; // If there is no value, it will be undefined - the API will pick the default format if this is the case
             api_response = await API.getMusicFile(token, music_id, format, range);
-            if (api_response.response === null) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
+            
+            if (Object.keys(api_response.response).length === 0) { bodyResponse(api_response.http_code, JSON.stringify(api_response.response), response); }
             else if (ifNoneMatch === api_response.response.etag) { bodylessStreamResponse(notModified, api_response.response, response); } // The cached version is valid : no need to send it again.
             else if (method === 'HEAD') { bodylesslessStreamResponse(api_response.http_code, api_response.response, response); } // No JSON : the util function handles everything
             else { bodyStreamResponse(api_response.http_code, api_response.response, request, response); }

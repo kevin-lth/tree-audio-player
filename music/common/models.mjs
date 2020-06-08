@@ -40,10 +40,12 @@ export function newIDlessMusic(full_name, category_id, track, tags) {
     } else { return null; }
 }
 
-export function newMusic(id, full_name, category_id, track, duration, tags, formats) {
+export function newMusic(id, full_name, category_id, track, duration, prefix, tags, formats) {
     const music = newIDlessMusic(full_name, category_id, track, tags), checked_id = newInt(id), checked_duration = newInt(duration), checked_formats = [];
-    if (checked_id !== null && checked_id >= 0 && checked_duration !== null && checked_duration >= 0 && music !== null) {
+    if (checked_id !== null && checked_id >= 0 && prefix !== undefined && prefix !== null && prefix.match(alphanumericAndNonWebCharacters) && prefix.length < 20 
+        && checked_duration !== null && checked_duration >= 0 && music !== null) {
         music['id'] = checked_id;
+        music['prefix'] = prefix;
         music['duration'] = checked_duration;
         if (formats === undefined || Array.isArray(formats)) {
             if (formats !== undefined) {

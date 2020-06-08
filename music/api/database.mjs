@@ -178,12 +178,12 @@ export async function newConnection() {
                     `SELECT COUNT(1) AS checkCount FROM category WHERE (category_id=$category_id AND 
                         creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id);`),
                 deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id;`),
-                getAllMusicsFromCategory: await db.prepare(`SELECT music_id, full_name, category_id, track, duration FROM music WHERE category_id=$category_id;`),
+                getAllMusicsFromCategory: await db.prepare(`SELECT music.music_id, music.full_name, music.category_id, music.track, music.duration, category.short_name FROM music, category WHERE music.category_id=category.category_id AND music.category_id=$category_id;`),
                 getAllMusicsFromCategoryAndChildren: await db.prepare(
-                    `SELECT music_id, full_name, category_id, track, duration FROM music WHERE category_id IN 
+                    `SELECT music.music_id, music.full_name, music.category_id, music.track, music.duration, category.short_name FROM music, category WHERE music.category_id=category.category_id AND music.category_id IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id);`),
                 createMusic: await db.prepare('INSERT INTO music (full_name, category_id, track) VALUES ($full_name, $category_id, $track);'),
-                getMusic: await db.prepare('SELECT music_id, full_name, category_id, track, duration FROM music WHERE music_id=$music_id;'),
+                getMusic: await db.prepare('SELECT music.music_id, music.full_name, music.category_id, music.track, music.duration, category.short_name FROM music, category WHERE music.category_id=category.category_id AND music_id=$music_id;'),
                 updateMusic: await db.prepare('UPDATE music SET full_name=$full_name, category_id=$category_id, track=$track WHERE music_id=$music_id;'),
                 deleteMusic: await db.prepare('DELETE FROM music WHERE music_id = $music_id;'),
                 createTag: await db.prepare('INSERT INTO tag (tag_name) VALUES ($tag_name);'),
@@ -627,7 +627,7 @@ export async function newConnection() {
         
         // Util functions
         function __getMusicObjectFromResult(music_result, tags, formats) {
-            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, music_result.duration, tags, formats);
+            return newMusic(music_result.music_id, music_result.full_name, music_result.category_id, music_result.track, music_result.duration, music_result.short_name, tags, formats);
         }
         
         async function __setMusicTags(music_id, tags) {
