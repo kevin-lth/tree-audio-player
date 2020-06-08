@@ -54,7 +54,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_public', 'Public Categories', body);
+        return await renderPage(token, 'category_public', 'Public Categories', body, 'categories');
     }
     
     async function renderCategoryPersonal(token) {
@@ -79,7 +79,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'Personal Categories', body);
+        return await renderPage(token, 'category_personal', 'Personal Categories', body, 'categories');
     }
     
     async function renderCategoryDetails(token, id) {
@@ -140,7 +140,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'Category Details', body);
+        return await renderPage(token, 'category_personal', 'Category Details', body, 'categories');
     }
     
     async function renderCategoryEdit(token, id) {
@@ -189,7 +189,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'Edit Category', body);
+        return await renderPage(token, 'category_personal', 'Edit Category', body, 'categories');
     }
     
     async function renderCategoryNew(token, parent_id) {
@@ -223,7 +223,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'New Category', body);
+        return await renderPage(token, 'category_personal', 'New Category', body, 'categories');
     }
     
     async function renderMusicEdit(token, id) {
@@ -264,7 +264,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'Edit Music', body);
+        return await renderPage(token, 'category_personal', 'Edit Music', body, 'categories');
     }
     
     async function renderMusicNew(token, category_id) {
@@ -297,7 +297,7 @@ export function newRender(bindings) {
                 }
             } else { body = not_logged_in; }
         } else { body = unknown_error; }
-        return await renderPage(token, 'category_personal', 'New Music', body);
+        return await renderPage(token, 'category_personal', 'New Music', body, 'categories');
     }
     
     async function renderPlaylist(token) {
@@ -309,7 +309,7 @@ export function newRender(bindings) {
                           <div class="selected-category-list"> <!-- This is handled by the client only -->
                           </div>
                       </div>`;
-        return await renderPage(token, 'playlist', 'Playlist', body);
+        return await renderPage(token, 'playlist', 'Playlist', body, 'playlist');
     }
     
     async function renderSettings(token) {
@@ -323,9 +323,9 @@ export function newRender(bindings) {
 
     // Internal render functions that are used by more specific functions for each page : they are the templates that will be filled with data.
 
-    async function renderPage(token, selected_page, title_suffix, main) {
-        const result = await Promise.all([renderHeader(token), renderNavs(token, selected_page), renderFooter()]); // We use Promise.all to allow both promises to happen simultaneously, which wouldn't be possible with merely await
-        const header = result[0], navs = result[1], footer = result[2];
+    async function renderPage(token, selected_page, title_suffix, main, additional_script) {
+        const result = await Promise.all([renderHeader(token), renderNavs(token, selected_page), renderTab(), renderFooter(), renderAdditionalScript(additional_script)]); // We use Promise.all to allow both promises to happen simultaneously, which wouldn't be possible with merely await
+        const header = result[0], navs = result[1], tab = result[2], footer = result[3], script = result[4];
         return `<!DOCTYPE html>
                 <html xmlns="http://www.w3.org/1999/xhtml" lang="en-GB" xml:lang="en-GB">
                     <head>
@@ -333,7 +333,8 @@ export function newRender(bindings) {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                         <title>${title_prefix} - ${title_suffix}</title>
                         <link rel="preload" href="/assets/main.css" as="style" />
-                        <link rel="preload" href="/assets/main.js" as="script" />
+                        <link rel="preload" href="/assets/general.js" as="script" />
+                        ${script.preload}
                         <link rel="preload" href="/assets/logo.svg" as="image" type="image/svg+xml" />
                         
                         <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
@@ -347,8 +348,11 @@ export function newRender(bindings) {
                             <div id="mobile-nav">${navs.mobile}</div>
                         </nav>
                         <main>${main}</main>
-                        <footer>${footer}</footer>
-                        <script src="/assets/main.js"></script> <!-- The page needs to be loaded for the script to work -->
+                        <footer id="tab">${tab}</footer>
+                        <footer id="footer">${footer}</footer>
+                        
+                        <script src="/assets/general.js"></script> <!-- The page needs to be loaded for the script to work -->
+                        ${script.script}
                     </body>
                 </html>`;
     }
@@ -420,6 +424,10 @@ export function newRender(bindings) {
                     <span class="music-duration">${newDuration(music.duration).print()}</span>
                 </article>`;
     }
+    
+    async function renderTab() {
+        return `<ul id="tab-selected-musics"></ul>`;
+    }
 
     async function renderFooter() {
         const audio_formats = Object.keys(possible_audio_mime_types);
@@ -441,7 +449,11 @@ export function newRender(bindings) {
                 <input id="audio-progress-bar" type="range" min="0" max="0" step="0.1" />`;
     }
     
+    async function renderAdditionalScript(file_name) {
+        if (file_name === undefined) { return { preload: '', script: '' }; }
+        else { return { preload: `<link rel="preload" href="/assets/${file_name}.js" as="script" />`, script: `<script src="/assets/${file_name}.js"></script>`}; }
+    }
+    
     return { renderHome, renderLogin, renderCategoryPublic, renderCategoryPersonal, renderCategoryDetails, renderCategoryEdit, renderCategoryNew, renderMusicEdit, renderMusicNew, renderPlaylist, renderSettings, renderAbout };
 }
-
 

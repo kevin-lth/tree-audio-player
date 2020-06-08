@@ -2,40 +2,53 @@
     #desktop-nav { display: block; }
     #mobile-nav { display: none; }
     
-    main {
-        max-height: calc(100vh - calc(calc(72px + 88px) + 40px));
-        width: calc(100% - calc(calc(248px + 60px) + 16px));
+    main, .footer-tab.footer-tab-active {
+        height: calc(100vh - calc(calc(72px + 88px) + 40px));
         padding-left: 60px;
-        margin-left: 248px;
         margin-bottom: 88px;
-     }
+    }
+    
+    main {
+        width: calc(100% - calc(calc(248px + 60px) + 16px));
+        margin-left: 248px;
+    }
      
-     footer {
+    footer {
         left: 248px;
-        height: 72px;
         width: calc(100% - calc(248px + 16px));
-     }
+    }
+     
+    .footer {
+        height: 72px;
+    }
 }
 @media (max-width: 719px) {
     #desktop-nav { display: none; }
     #mobile-nav { display: block; }
     
-    main {
-        max-height: calc(100vh - calc(calc(72px + 68px) + 40px));
-        width: calc(100% - calc(calc(82px + 16px) + 16px));
+    main, .footer-tab.footer-tab-active {
+        height: calc(100vh - calc(calc(72px + 68px) + 40px));
         padding-left: 16px;
-        margin-left: 82px;
         margin-bottom: 68px;
-     }
+    }
+    
+    main {
+        width: calc(100% - calc(calc(82px + 16px) + 16px));
+        margin-left: 82px;
+    }
      
-     footer {
+    footer {
         left: 80px;
-        height: 52px;
         width: calc(100% - calc(80px + 16px));
-     }
+    }
+     
+    .footer {
+        height: 52px;
+    }
 }
 
-body { 
+body {
+    position: relative;
     margin: 0px;
     overflow: hidden;
     color: #000000;
@@ -86,7 +99,24 @@ main {
     margin-top: 72px;
 }
 
-footer {
+.footer-tab {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    height: 0;
+    padding-right: 16px;
+    z-index: 500;
+    background-color: #8e523a;
+    transition: height 0.5s;
+}
+
+.footer-tab.footer-tab-active {
+    /* These paddings are here to prevent the tab from being shown when retracted  */
+    padding-top: 24px;
+    padding-bottom: 16px;
+}
+
+.footer {
     position: fixed;
     bottom: 0;
     padding: 8px;

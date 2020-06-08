@@ -8,6 +8,7 @@ let selected_musics = [];
 let current_music_index = 0;
 let current_audio_time = 0;
 
+const category_musics_info = {};
 const music_info = {};
 
 // Event handlers
@@ -36,12 +37,19 @@ function updateAllEventListeners() {
     updateEventListener('#audio-player', 'timeupdate', updateCurrentTime);
     updateEventListener('#audio-player', 'ended', nextMusic);
     
-    updateEventListener('#audio-previous', 'click', previousMusic);
-    updateEventListener('#audio-play-stop', 'click', playOrStopMusic);
-    updateEventListener('#audio-next', 'click', nextMusic);
-    updateEventListener('#audio-random', 'click', randomizeMusic);
+    updateEventListener('#audio-previous', 'click', (event) => { event.stopPropagation(); previousMusic(); });
+    updateEventListener('#audio-play-stop', 'click', (event) => { event.stopPropagation(); playOrStopMusic(); });
+    updateEventListener('#audio-next', 'click', (event) => { event.stopPropagation(); nextMusic(); });
+    updateEventListener('#audio-random', 'click', (event) => { event.stopPropagation(); randomizeMusic(); });
+    updateEventListener('#audio-progress-bar', 'click', (event) => { event.stopPropagation(); });
     
     updateEventListener('#audio-progress-bar', 'input', (event) => { setCurrentTime(event.currentTarget.value); });
+    updateEventListener('#audio-progress-bar', 'mousedown', (event) => { pauseIfPlaying(event.currentTarget); });
+    updateEventListener('#audio-progress-bar', 'touchstart', (event) => { pauseIfPlaying(event.currentTarget); });
+    updateEventListener('#audio-progress-bar', 'mouseup', (event) => { unpauseIfPlaying(event.currentTarget); });
+    updateEventListener('#audio-progress-bar', 'touchend', (event) => { unpauseIfPlaying(event.currentTarget); });
+    
+    updateEventListener('#footer', 'click', toggleTab);
     
 
     updateEventListener('#login-submit', 'click', login);
@@ -132,30 +140,33 @@ function __loadMusic(music_id) {
         const format = sources[i].dataset.audioFormat;
         sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
     }
-    audio.currentTime = current_audio_time;
     audio.load();
+    audio.currentTime = current_audio_time;
     updateProgressBar();
 }
 
 function updateMusic() {
     const audio = document.querySelector('#audio-player');
-    if (audio !== null && current_music_index < selected_musics.length) {
-        const music_id = selected_musics[current_music_index];
-        if (music_info[music_id] !== undefined) { __loadMusic(music_id); }
-        else {
-            function addMusicInfoAndLaunchMusic(json) {
-                music_info[music_id] = json;
-                __loadMusic(music_id);
+    if (audio !== null) {
+        if (current_music_index < selected_musics.length) {
+            const music_id = selected_musics[current_music_index];
+            if (music_info[music_id] !== undefined) { __loadMusic(music_id); }
+            else {
+                function addMusicInfoAndLaunchMusic(json) {
+                    music_info[music_id] = json;
+                    __loadMusic(music_id);
+                }
+                API('GET', '/api/music/resource?id=' + music_id).then(addMusicInfoAndLaunchMusic);
             }
-            API('GET', '/api/music/resource?id=' + music_id).then(addMusicInfoAndLaunchMusic);
         }
+        else { __loadMusic(-1); } // This should only happen when the player has no music
     }
 }
 
 function updateProgressBar() {
     const audio = document.querySelector('#audio-player'), progress_bar = document.querySelector('#audio-progress-bar');
     if (audio !== null && progress_bar !== null) {
-        progress_bar.max = audio.duration;
+        progress_bar.max = isNaN(audio.duration) ? 0 : audio.duration;
         progress_bar.value = current_audio_time;
     }
 }
@@ -207,6 +218,42 @@ function setCurrentTime(new_time) {
     const audio = document.querySelector('#audio-player');
     if (audio !== null) { audio.currentTime = current_audio_time; }
     saveToLocalStorage(['current_audio_time']);
+}
+
+function pauseIfPlaying(input_range) {
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null) {
+        if (!audio.paused) {
+            input_range.dataset.wasPlaying = "was_playing";
+            audio.pause();
+        }
+    }
+}
+
+function unpauseIfPlaying(input_range) {
+    const audio = document.querySelector('#audio-player');
+    if (audio !== null) {
+        if (input_range.dataset.wasPlaying === "was_playing") {
+            delete input_range.dataset.wasPlaying;
+            setCurrentTime(input_range.value);
+            audio.play();
+        }
+    }
+}
+
+// Audio Player Tab
+
+function toggleTab() {
+    const tab = document.querySelector('#tab');
+    if (tab !== null) {
+        if (tab.classList.contains('active')) { tab.classList.remove('active'); }
+        else { tab.classList.add('active'); }
+    }
+}
+
+function activateTabAnimation() {
+    const tab = document.querySelector('#tab');
+    if (tab !== null) { setTimeout(() => { tab.classList.add('loaded'); }), 100; }
 }
 
 // Login / Logout
@@ -343,64 +390,55 @@ function deleteMusic(music_id) { API('DELETE', '/api/music/resource?id=' + music
 
 // Music - Tags
 
-function addEditTag() { addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
-
-function addNewTag() { addTag(document.querySelector('#music-new-tag-input'), 'music-new-tag'); }
-
-function addTag(input, unique_class) {
+function __addTag(input, unique_class) {
     if (input !== null) {
         const tag = document.createElement('span');
-        tag.classList.add(unique_class);
-        tag.classList.add('music-tag');
-        tag.dataset.tag = input.value;
-        tag.textContent = input.value;
+        tag.classList.add(unique_class); tag.classList.add('music-tag');
+        tag.dataset.tag = input.value; tag.textContent = input.value;
         tag.addEventListener('click', removeTag);
         input.parentNode.prepend(tag);
         input.value = '';
     }
 }
 
+function addEditTag() { __addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
+
+function addNewTag() { __addTag(document.querySelector('#music-new-tag-input'), 'music-new-tag'); }
+
 function removeTag(event) { event.currentTarget.remove(); }
 
 // Playlist
 
+function __createMusic(music) {
+    const music_li = document.createElement('li');
+    music_li.classList.add('tab-music');
+    if (selected_musics.indexOf(music.id) !== -1) { music_li.classList.add('active'); }
+    music_li.dataset.categoryId = music.category_id; music_li.dataset.musicId = music.id; music_li.dataset.title = music.full_name; music_li.dataset.track = music.track;
+    const music_prefix = document.createElement('span'), music_track = document.createElement('span'), music_title = document.createElement('span'), music_tags = document.createElement('span');
+    music_prefix.classList.add('music-prefix'); music_prefix.textContent = music.prefix;
+    music_track.classList.add('music-track'); music_track.textContent = music.track;
+    music_title.classList.add('music-full-name'); music_title.textContent = music.full_name;
+    for (let k = 0; k < music.tags.length; k++) {
+        const music_tag = document.createElement('span');
+        music_tag.classList.add('music-tag'); music_tag.textContent = music.tags[k];
+        music_tags.appendChild(music_tag);
+    }
+    music_li.appendChild(music_prefix); music_li.appendChild(music_track); music_li.appendChild(music_title); music_li.appendChild(music_tags);
+    return music_li;
+}
+
 function __createPlaylistCategory(category, musics) {
     const category_article = document.createElement('article');
-    category_article.classList.add('playlist-category');
-    category_article.dataset.categoryId = category.id;
-    category_article.dataset.fullName = category.full_name;
+    category_article.classList.add('playlist-category'); category_article.dataset.categoryId = category.id;
     const category_header = document.createElement('h4');
-    category_header.classList.add('category-header');
-    category_header.textContent = category.full_name + '(' + musics.length + ')';
+    category_header.classList.add('category-header'); category_header.textContent = category.full_name + '(' + musics.length + ')';
+    category_header.addEventListener('click', (event) => { addAllMusicsToTab(musics); });
     const category_musics = document.createElement('ul');
-    category_musics.dataset.categoryId = category.id;
     const result_musics = [];
     for (let j = 0; j < musics.length; j++) {
-        const music_li = document.createElement('li');
+        const music_li = __createMusic(musics[j]);
         music_li.classList.add('playlist-music');
-        if (selected_musics.indexOf(musics[j].id) !== -1) { music_li.classList.add('playlist-music-selected'); }
-        music_li.dataset.categoryId = category.id;
-        music_li.dataset.musicId = musics[j].id;
-        music_li.dataset.title = musics[j].full_name;
-        music_li.dataset.track = musics[j].track;
-        const music_prefix = document.createElement('span'), music_track = document.createElement('span'), music_title = document.createElement('span'), music_tags = document.createElement('span');
-        music_prefix.classList.add('playlist-music-prefix');
-        music_prefix.textContent = category.short_name;
-        music_track.classList.add('playlist-music-track');
-        music_track.textContent = musics[j].track;
-        music_title.classList.add('playlist-music-title');
-        music_title.textContent = musics[j].full_name;
-        for (let k = 0; k < musics[j].tags.length; k++) {
-            const music_tag = document.createElement('span');
-            music_tag.classList.add('playlist-music-tag');
-            music_tag.textContent = musics[j].tags[k];
-            music_tags.appendChild(music_tag);
-        }
-        music_li.appendChild(music_prefix);
-        music_li.appendChild(music_track);
-        music_li.appendChild(music_title);
-        music_li.appendChild(music_tags);
-        music_li.addEventListener('click', addMusicToPlayer);
+        music_li.addEventListener('click', (event) => { addMusicToTab(event.currentTarget.dataset.musicId); });
         result_musics.push(music_li);
     }
     category_article.appendChild(category_header);    // We want to sort the music by track number or, if failing, by alphabetical order. Because we are in a loop, we can't assure that order unless we do it at the very end
@@ -430,26 +468,26 @@ function loadSelectedCategories() {
                 categories_result.push(__createPlaylistCategory(category_result, musics_result));
                 if (categories_result.length === selected_categories.length) { // We can't check i directly, since we are in a callback we cannot verify which one will be the last
                     categories_result.sort(__sortCategoryPlaylist);
-                    for (let j = 0; j < categories_result.length; j++) {
-                        selected_category_list.appendChild(categories_result[j]);
-                    }
+                    const fragment = document.createDocumentFragment();
+                    for (let j = 0; j < categories_result.length; j++) { fragment.appendChild(categories_result[j]); }
+                    selected_category_list.innerHTML = '';
+                    selected_category_list.appendChild(fragment);
                 }
+                const category_musics_list = [];
                 for (let j = 0; j < musics_result.length; j++) {
+                    category_musics_list.push(musics_result[j].id);
                     music_info[musics_result[j].id] = musics_result[j]; // We store music info to prevent sending unnecessary requests
                 }
+                category_musics_info[category_result.id] = category_musics_list;
             }
             Promise.all([API('GET', '/api/category/resource?id=' + selected_categories[i]), API('GET', '/api/category/music?id=' + selected_categories[i])]).then(loadMusics);
         }
     }
 }
 
-function selectAllFromCategory(category_id) {
-    // TODO
-}
-
 function removeSelectedCategory(category_id) {
     const index = selected_categories.indexOf(category_id);
-    if (index !== -1) { // We need to unselect the category. We won't unselect the selected musics : users might want to open categories, select their musics, and close them to not clog up their interface in the playlist page.
+    if (index !== -1) { // We need to unselect the category. We won't unselect the selected musics : users might want to open categories, select their musics, and close them to not clog up their interface on the playlist page.
         selected_categories.splice(index, 1);
         const playlist_category = document.querySelector('.playlist-category[data-category-id=' + category_id  + ']');
         if (playlist_category !== null) { playlist_category.parentNode.removeChild(playlist_category); }
@@ -459,18 +497,76 @@ function removeSelectedCategory(category_id) {
 
 // Playlist - Audio Player link
 
-function addMusicToPlayer(music_id) {
-    const id = event.currentTarget.dataset.musicId;
+function __createTabMusic(music) {
+    const music_li = __createMusic(music);
+    music_li.addEventListener('click', (event) => { removeMusicFromTab(event.currentTarget.dataset.musicId); });
+    return music_li;
+}
+
+function loadSelectedMusics() {
+    const promises = [];
+    for (let i = 0; i < selected_musics.length; i++) {
+        const music_result = music_info[selected_musics[i]];
+        if (music_result !== undefined) { promises.push(Promise.resolve(__createTabMusic(music_result))); }
+        else { promises.push(API('GET', '/api/music/resource?id=' + selected_musics[i]).then(__createTabMusic)); }
+    }
+    function loadMusics(promises_result) {
+        const tab_selected_musics = document.querySelector('#tab-selected-musics');
+        for (let i = 0; i < promises_result.length; i++) { tab_selected_musics.appendChild(promises_result[i]); }
+        updateMusic();
+    }
+   Promise.all(promises).then(loadMusics); // We use Promise.all to deal with musics which we don't know yet and also maintain the order of the selected musics 
+}
+
+function addAllMusicsFromSelectionToTab() {
+    const musics = document.querySelectorAll('.playlist-music[data-category-id="' + category_id  + '"]');
+}
+
+function addAllMusicsFromCategoryToTab(category_id) {
+    const musics = document.querySelectorAll('.playlist-music[data-category-id="' + category_id  + '"]');
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < musics.length; i++) {
+        const music_id = musics[i].dataset.musicId;
+        if (selected_musics.indexOf(music_id) === -1) {
+            selected_musics.push(music_id);
+            musics[j].classList.add('active');
+            const music_li = __createTabMusic(music_info[music_id]);
+            fragment.appendChild(music_li);
+        }
+    }
+    const tab_selected_musics = document.querySelector('#tab-selected-musics');
+    if (tab_selected_musics !== null) { tab_selected_musics.appendChild(fragment); }
+    updateMusic();
+    saveToLocalStorage(['selected_musics']);
+}
+
+function addMusicToTab(music_id) {
     if (selected_musics.indexOf(music_id) === -1) {
         selected_musics.push(music_id);
+        const music_item = document.querySelector('.playlist-music[data-music-id="' + music_id + '"]');
+        if (music_item !== null) { music_item.classList.add('active'); }
+        const tab_selected_musics = document.querySelector('#tab-selected-musics'), music_li = __createTabMusic(music_info[music_id]);
+        if (tab_selected_musics !== null) { tab_selected_musics.appendChild(music_li); }
+        updateMusic();
         saveToLocalStorage(['selected_musics']);
     }
 }
 
-function removeMusicFromPlayer(music_id) {
-    if (selected_musics.indexOf(music_id) !== -1) { 
-        selected_musics.splice(selected_musics.indexOf(music_id), 1);
-        saveToLocalStorage(['selected_musics']);
+function removeMusicFromTab(music_id) {
+    const index = selected_musics.indexOf(music_id);
+    console.log(index);
+    if (index !== -1) { 
+        selected_musics.splice(index, 1);
+        if (current_music_index > index) {
+            if (current_music_index > 0) { current_music_index--; }
+            else { current_music_index = selected_musics.length - 1; }
+            updateMusic();
+        }
+        else if (current_music_index === index) { nextMusic(); }
+        // TODO : Remove from DOM
+        const music_item = document.querySelector('.playlist-music[data-music-id="' + music_id + '"]');
+        if (music_item !== null) { music_item.classList.remove('active'); }
+        saveToLocalStorage(['selected_musics', 'current_music_index']);
     }
 }
 
@@ -485,7 +581,9 @@ function onLoad() {
     updateMusic();
     updateCategoryToggles();
     loadSelectedCategories();
+    loadSelectedMusics();
 }
 
 window.addEventListener('DOMContentLoaded', onLoad);
+window.addEventListener('load', activateTabAnimation); // We activate CSS transitions for the tab once the page is fully loaded to prevent seing the tab close on load
 
