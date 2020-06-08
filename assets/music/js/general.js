@@ -64,6 +64,14 @@ function updateAllEventListeners() {
     
     updateEventListener('#footer', 'click', toggleTab);
     
+    // Media Metadata
+    if ('mediaSession' in navigator) {
+        // We don't need to handle play and pause
+        navigator.mediaSession.setActionHandler('previoustrack', previousMusic);
+        navigator.mediaSession.setActionHandler('nexttrack', nextMusic);
+        navigator.mediaSession.setActionHandler('seekto', (details) => { setCurrentTime(details.seekTime); });
+        navigator.mediaSession.setActionHandler('stop', __removeAllMusicsFromTab);
+    }
 
     updateEventListener('#login-submit', 'click', login);
     updateEventListener('#header-logout', 'click', logout);
@@ -134,12 +142,23 @@ function __updateSources(music_id) {
         const format = dom_audio_sources[i].dataset.audioFormat;
         dom_audio_sources[i].src = '/api/music/file?id=' + music_id + '&format=' + format;
     }
+    if ('mediaSession' in navigator) {
+        const json = music_info[music_id];
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: json.full_name,
+            artist: json.prefix,
+            artwork: [{ src: "/api/category/cover?id=" + json.category_id, sizes: '512x512', type: 'image/png' }]
+        });
+    }
 }
 
 function __disableSources() {
     for (let i = 0; i < dom_audio_sources.length; i++) {
         const format = dom_audio_sources[i].dataset.audioFormat;
         dom_audio_sources[i].src = '';
+    }
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({});
     }
 }
 
@@ -169,8 +188,12 @@ function updateMusic() {
 }
 
 function updateProgressBar() {
-    dom_audio_progress_bar.max = isNaN(dom_audio.duration) ? 0 : dom_audio.duration;
+    const duration = isNaN(dom_audio.duration) ? 0 : dom_audio.duration;
+    dom_audio_progress_bar.max = duration;
     dom_audio_progress_bar.value = current_audio_time;
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+        navigator.mediaSession.setPositionState({ duration: duration, playbackRate: 1, position: current_audio_time });
+    }
 }
 
 function playOrStopMusic() {
@@ -312,25 +335,38 @@ function loadSelectedMusics() {
    Promise.all(promises).then(loadMusics); // We use Promise.all to deal with musics which we don't know yet and also maintain the order of the selected musics 
 }
 
-function __removeMusicFromTab(tab_music) {
-    const music_id = tab_music.dataset.musicId;
-    const index = selected_musics.indexOf(music_id);
-    if (index !== -1) { 
-        selected_musics.splice(index, 1);
-        if (current_music_index > index) {
-            if (current_music_index > 0) { current_music_index--; }
-            else { current_music_index = selected_musics.length - 1; }
-            updateMusic();
+function __removeMusicsFromListFromTab(tab_musics) {
+    for (let i = 0; i < tab_musics.length; i++) {
+        const music_id = tab_musics[i].dataset.musicId;
+        const index = selected_musics.indexOf(music_id);
+        if (index !== -1) { 
+            selected_musics.splice(index, 1);
+            if (current_music_index > index) {
+                if (current_music_index > 0) { current_music_index--; }
+                else { current_music_index = selected_musics.length - 1; }
+            }
+            else if (current_music_index === index) {
+                has_music_changed = true;
+                if (current_music_index === selected_musics.length) { current_music_index = 0; }
+            } else { has_music_changed = true; }
+            tab_musics[i].remove();
+            const playlist_music = active_playlist_musics[music_id];
+            if (playlist_music !== undefined) {
+                playlist_music.classList.remove('active');
+                delete active_playlist_musics[music_id];
+            }
         }
-        else if (current_music_index === index) { nextMusic(); }
-        tab_music.remove();
-        const playlist_music = active_playlist_musics[music_id];
-        if (playlist_music !== undefined) {
-            playlist_music.classList.remove('active');
-            delete active_playlist_musics[music_id];
-        }
-        saveToLocalStorage(['selected_musics', 'current_music_index']);
     }
+    if (has_music_changed) { current_audio_time = 0; }
+    updateMusic();
+    saveToLocalStorage(['selected_musics', 'current_music_index']);
+}
+
+function __removeMusicFromTab(tab_music) { __removeMusicsFromListFromTab([tab_music]); }
+
+function __removeAllMusicsFromTab() {
+    const tab_musics = dom_tab_selected_musics.querySelectorAll('.tab-music');
+    __removeMusicsFromListFromTab(tab_musics);
 }
 
 // Settings

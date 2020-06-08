@@ -84,6 +84,7 @@ function __addAllMusicsFromListToTab(playlist_musics) {
             fragment.appendChild(music_li);
         }
     }
+    if (has_music_changed) { current_audio_time = 0; }
     dom_tab_selected_musics.appendChild(fragment);
     updateMusic();
     saveToLocalStorage(['selected_musics']);
