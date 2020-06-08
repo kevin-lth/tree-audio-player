@@ -228,7 +228,7 @@ function randomizeMusic() {
     }
     current_music_index = 0, current_audio_time = 0; // We reset the index as well : there's no point staying in the middle of the list since it was randomized
     has_music_changed = true;
-    updateMusic();
+    loadSelectedMusics();
     saveToLocalStorage(['current_audio_time', 'current_music_index']);
 }
 
@@ -324,13 +324,16 @@ function __createTabMusic(music) {
 
 function loadSelectedMusics() {
     const promises = [];
+    dom_tab_selected_musics.innerHTML = ''; // This function can be called by randomizeMusic as reordering the list would be difficult and we already have the data required
+    const fragment = document.createDocumentFragment();
     for (let i = 0; i < selected_musics.length; i++) {
         const music_result = music_info[selected_musics[i]];
         if (music_result !== undefined) { promises.push(Promise.resolve(__createTabMusic(music_result))); }
         else { promises.push(API('GET', '/api/music/resource?id=' + selected_musics[i]).then(__createTabMusic)); }
     }
     function loadMusics(promises_result) {
-        for (let i = 0; i < promises_result.length; i++) { dom_tab_selected_musics.appendChild(promises_result[i]); }
+        for (let i = 0; i < promises_result.length; i++) { fragment.appendChild(promises_result[i]); }
+        dom_tab_selected_musics.appendChild(fragment);
         updateMusic();
     }
    Promise.all(promises).then(loadMusics); // We use Promise.all to deal with musics which we don't know yet and also maintain the order of the selected musics 
