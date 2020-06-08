@@ -15,11 +15,12 @@ const music_info = {};
 const active_playlist_musics = {}; // This is redundant with selected_musics, but it allows to cache HTML Elements to prevent searching for them again
 
 // Recurring querySelector
-let dom_audio, dom_audio_sources, dom_audio_progress_bar, dom_audio_title, dom_audio_duration, dom_tab_selected_musics;
+let dom_audio, dom_audio_sources, dom_audio_play_stop, dom_audio_progress_bar, dom_audio_title, dom_audio_duration, dom_tab_selected_musics;
 
 function loadQuerySelectors() {
     dom_audio = document.getElementById('audio-player');
     dom_audio_sources = document.getElementsByClassName('audio-source');
+    dom_audio_play_stop = document.getElementById('audio-play-stop');
     dom_audio_progress_bar = document.getElementById('audio-progress-bar');
     dom_audio_title = document.getElementById('audio-title');
     dom_audio_duration = document.getElementById('audio-duration');
@@ -61,6 +62,8 @@ function updateEventListenerForEach(selector, event_type, func) {
 function updateAllEventListeners() {
     updateEventListener('#audio-player', 'timeupdate', updateCurrentTime);
     updateEventListener('#audio-player', 'ended', nextMusic);
+    updateEventListener('#audio-player', 'play', () => { dom_audio_play_stop.classList.add('playing'); });
+    updateEventListener('#audio-player', 'pause', () => { dom_audio_play_stop.classList.remove('playing'); });
     
     updateEventListener('#audio-previous', 'click', (event) => { event.stopPropagation(); previousMusic(); });
     updateEventListener('#audio-play-stop', 'click', (event) => { event.stopPropagation(); playOrStopMusic(); });
