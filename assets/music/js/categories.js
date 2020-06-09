@@ -13,7 +13,7 @@ function updateAllCategoriesEventListeners() {
     
     updateEventListener('#music-edit-submit', 'click', editMusic);
     updateEventListener('#music-new-submit', 'click', newMusic);
-    updateEventListenerForEach('.music-delete-button', 'click', (event) => { deleteCategory(event.currentTarget.dataset.musicId); });
+    updateEventListenerForEach('.music-delete-button', 'click', (event) => { deleteMusic(event.currentTarget.dataset.musicId); });
     
     updateEventListener('#music-edit-tag-add', 'click', addEditTag);
     updateEventListener('#music-new-tag-add', 'click', addNewTag);

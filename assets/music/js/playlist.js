@@ -21,7 +21,7 @@ function __createPlaylistCategory(category, musics) {
     const result_musics = [];
     for (let j = 0; j < musics.length; j++) { result_musics.push(__createPlaylistMusic(musics[j])); }
     category_article.appendChild(category_header);    // We want to sort the music by track number or, if failing, by alphabetical order. Because we are in a loop, we can't assure that order unless we do it at the very end
-    result_musics.sort(__sortMusicPlaylist);
+    // result_musics.sort(__sortMusicPlaylist); // The API already sorts the music for us
     for (let i = 0; i < result_musics.length; i++) { category_musics.appendChild(result_musics[i]); }
     category_article.appendChild(category_musics);
     return category_article;
