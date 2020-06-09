@@ -7,7 +7,7 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="delete.svg"
+   sodipodi:docname="add.svg"
    inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
    id="svg8"
    version="1.1"
@@ -73,6 +73,10 @@
        cy="16.933336"
        rx="13.703343"
        ry="13.703345" />
+    <path
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:3.175;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 16.933333,11.641666 c 0,10.583333 0,10.583333 0,10.583333 v 0"
+       id="path1535" />
     <path
        inkscape:transform-center-y="1.5470779"
        inkscape:transform-center-x="3.0353197"

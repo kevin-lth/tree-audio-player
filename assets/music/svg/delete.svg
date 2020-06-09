@@ -9,8 +9,8 @@
    </cc:Work>
   </rdf:RDF>
  </metadata>
- <g fill="none" stroke="#000" stroke-width="4">
-  <path d="m4.2333 4.2333 25.4 25.4"/>
-  <path d="m29.633 4.2333-25.4 25.4"/>
+ <g fill="none" stroke="#000">
+  <ellipse cx="16.933" cy="16.933" rx="13.703" ry="13.703" stop-color="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2266"/>
+  <path d="m11.642 16.933h10.583" stroke-width="3.175"/>
  </g>
 </svg>
