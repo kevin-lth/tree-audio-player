@@ -223,7 +223,7 @@ function playOrStopMusic() {
 
 function previousMusic() {
     if (current_music_index > 0) { current_music_index--; }
-    else { current_music_index = selected_musics.length - 1; }
+    else { current_music_index = Math.max(0, selected_musics.length - 1); }
     current_audio_time = 0;
     has_music_changed = true;
     updateMusic();
