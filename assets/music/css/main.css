@@ -236,11 +236,25 @@ main {
 }
 
 
-.form input, select {
+.form input, .form select, .music-tag-input {
     font-size: 1em;
     height: 1.5em;
     margin-left: 1em;
     border-radius: 0.2em;
+}
+
+.submit {
+    margin-top: 1em;
+    margin-left: 0.75em;
+    font-size: 1.5em;
+    cursor: pointer;
+    background-color: #cccccc;
+    border-radius: 0.2em;
+}
+
+#music-edit-tags, #music-new-tags {
+    margin: 1em 0.5em;;
+    cursor: pointer;
 }
 
 #tab {

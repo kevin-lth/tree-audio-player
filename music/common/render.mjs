@@ -142,12 +142,12 @@ export function newRender(bindings) {
                                                     </div>
                                                 </div>
                                                 <div class="music-list">
-                                                    <h3 class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>) :</h3>
+                                                    <h3 class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>)</h3>
                                                     ${body_musics}
                                                     <a id="music-add" class="music-add-button" href="/html/music/new?category_id=${category.id}" title="Add a new music" ><img class="icon" src="/assets/add.svg" draggable="false" /></a>
                                                 </div>
                                             </article>
-                                            <h3 class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</h3>
+                                            <h3 class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>)</h3>
                                             <div class="category-list">${body_children}</div>
                                         </div>`;
                                 break;
@@ -205,7 +205,7 @@ export function newRender(bindings) {
                                                         <input id="category-edit-cover" type="file" name="cover" accept="image/*" />
                                                     </label>
                                                 </form>
-                                                <button id="category-edit-submit" type="submit">Update</button>
+                                                <button id="category-edit-submit" class="submit" type="submit">Update</button>
                                             </div>`;
                                     break;
                                 default:
@@ -238,16 +238,26 @@ export function newRender(bindings) {
                             parent_options += `<option value="${owned_categories[i].id}" ${parent_id === owned_categories[i].id ? 'selected="true"' : ''}>${owned_categories[i].full_name}</option>`;
                         }
                         body = `<div class="category-new">
-                                    <form id="category-new-form">
-                                        <input id="category-new-full-name" type="text" name="full_name" required="required" maxlength="50" />
-                                        <input id="category-new-short-name" type="text" name="short_name" required="required" maxlength="20" />
-                                        <select id="category-new-parent" name="parent_id">
-                                            ${parent_options}
-                                        </select>
-                                        <input id="category-new-is-public" type="checkbox" name="is_public" value="true" />
-                                        <input id="category-new-cover" type="file" name="cover" accept="image/*" required="required" />
+                                    <form id="category-new-form" class="form">
+                                        <label>Full Name :
+                                            <input id="category-new-full-name" type="text" name="full_name" required="required" maxlength="50" />
+                                        </label>
+                                        <label>Short Name : 
+                                            <input id="category-new-short-name" type="text" name="short_name" required="required" maxlength="20" />
+                                        </label>
+                                        <label>Parent Category : 
+                                            <select id="category-new-parent" name="parent_id">
+                                                ${parent_options}
+                                            </select>
+                                        </label>
+                                        <label>Is Public :
+                                            <input id="category-new-is-public" type="checkbox" name="is_public" value="true" />
+                                        </label>
+                                        <label>Cover :
+                                            <input id="category-new-cover" type="file" name="cover" accept="image/*" required="required" />
+                                        </label>
                                     </form>
-                                    <button id="category-new-submit" type="submit">Add</button>
+                                    <button id="category-new-submit" class="submit" type="submit">Add</button>
                                 </div>`;
                         break;
                     default:
@@ -274,18 +284,26 @@ export function newRender(bindings) {
                             }
                         }
                         body = `<div class="music-edit">
-                                    <form id="music-edit-form" data-music-id="${music.id}">
-                                        <input id="music-edit-full-name" type="text" name="full_name" value="${music.full_name}" required="required" maxlength="50" />
+                                    <form id="music-edit-form" class="form" data-music-id="${music.id}">
+                                        <label>Full Name :
+                                            <input id="music-edit-full-name" type="text" name="full_name" value="${music.full_name}" required="required" maxlength="50" />
+                                        </label>
                                         <input id="music-edit-category-id" type="hidden" name="category_id" value="${music.category_id}" />
-                                        <input id="music-edit-track" type="number" name="track" value="${music.track}" required="required" min="1" />
-                                        <input id="music-edit-file" type="file" name="file" accept="audio/*" required="required" />
+                                        <label>Track :
+                                            <input id="music-edit-track" type="number" name="track" value="${music.track}" required="required" min="1" />
+                                        </label>
+                                        <label>Music File :
+                                            <input id="music-edit-file" type="file" name="file" accept="audio/*" required="required" />
+                                        </label>
                                     </form>
-                                    <div id="music-edit-tags" class="music-tags">
+                                    <div id="music-edit-tags" class="music-tags" title="Click on a tag to remove">
                                         ${body_tags}
-                                        <input id="music-edit-tag-input" type="text" />
-                                        <button id="music-edit-tag-add">Add Tag</button>
                                     </div>
-                                    <button id="music-edit-submit" type="submit">Update</button>
+                                    <div>
+                                        <button id="music-edit-tag-add" class="music-tag-add">Add Tag :</button>
+                                        <input id="music-edit-tag-input" class="music-tag-input" type="text" />
+                                    </div>
+                                    <button id="music-edit-submit" class="submit" type="submit">Update</button>
                                 </div>`;
                         break;
                     case unauthorized:
@@ -308,17 +326,24 @@ export function newRender(bindings) {
                 switch (category_result.http_code) {
                     case OK:
                         body = `<div class="music-new">
-                                    <form id="music-new-form">
-                                        <input id="music-new-full-name" type="text" name="full_name" required="required" maxlength="50" />
+                                    <form id="music-new-form" class="form">
+                                        <label>Full Name :
+                                            <input id="music-new-full-name" type="text" name="full_name" required="required" maxlength="50" />
+                                        </label>
                                         <input id="music-new-category-id" type="hidden" name="category_id" value="${category_id}" />
-                                        <input id="music-new-track" type="number" name="track" required="required" min="1" />
-                                        <input id="music-new-file" type="file" name="file" accept="audio/*" required="required" />
+                                        <label>Track : 
+                                            <input id="music-new-track" type="number" name="track" required="required" min="1" />
+                                        </label>
+                                        <label>Music File : 
+                                            <input id="music-new-file" type="file" name="file" accept="audio/*" required="required" />
+                                        </label>
                                     </form>
-                                    <div id="music-new-tags" class="music-tags">
-                                        <input id="music-new-tag-input" type="text" />
-                                        <button id="music-new-tag-add">Add Tag</button>
+                                    <div>
+                                        <div id="music-new-tags" class="music-tags" title="Click on a tag to remove"></div>
+                                        <button id="music-new-tag-add" class="music-tag-add">Add Tag :</button>
+                                        <input id="music-new-tag-input" class="music-tag-input" type="text" />
                                     </div>
-                                    <button id="music-new-submit" type="submit">Add</button>
+                                    <button id="music-new-submit" class="submit" type="submit">Add</button>
                                 </div>`;
                         break;
                     case unauthorized:
