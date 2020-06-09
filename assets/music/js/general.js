@@ -16,6 +16,7 @@ const active_playlist_musics = {}; // This is redundant with selected_musics, bu
 
 // Recurring querySelector
 let dom_audio, dom_audio_sources, dom_audio_play_stop, dom_audio_progress_bar, dom_audio_title, dom_audio_duration, dom_tab_selected_musics;
+let dom_edit_tag_input, dom_new_tag_input, dom_edit_tags, dom_new_tags;
 
 function loadQuerySelectors() {
     dom_audio = document.getElementById('audio-player');
@@ -25,6 +26,11 @@ function loadQuerySelectors() {
     dom_audio_title = document.getElementById('audio-title');
     dom_audio_duration = document.getElementById('audio-duration');
     dom_tab_selected_musics = document.getElementById('tab-selected-musics');
+    
+    dom_edit_tag_input = document.getElementById('music-edit-tag-input');
+    dom_new_tag_input = document.getElementById('music-new-tag-input');
+    dom_edit_tags = document.getElementById('music-edit-tags');
+    dom_new_tags = document.getElementById('music-new-tags');
 }
 
 // Util

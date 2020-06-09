@@ -74,10 +74,10 @@ function editCategory() {
 function newCategory() {
     const form = document.querySelector('#category-new-form');
     if (form !== null) {
-        const form_data = new FormData(form)
+        const form_data = new FormData(form);
         const cover = form_data.get('cover');
         __prepareCategoryFormData(form_data);
-        if (form_data.get('cover').name === '') { API('POST', '/api/category/resource', form_data).then(goBack).catch(refresh); }
+        if (cover.name === '') { API('POST', '/api/category/resource', form_data).then(goBack).catch(refresh); }
         else { // We will send the cover afterwards once the category exists.
             const cover_form = new FormData();
                 cover_form.set('cover', cover);
@@ -130,20 +130,20 @@ function deleteMusic(music_id) { API('DELETE', '/api/music/resource?id=' + music
 
 // Music - Tags
 
-function __addTag(input, unique_class) {
+function __addTag(input, parent_div, unique_class) {
     if (input !== null) {
         const tag = document.createElement('span');
         tag.classList.add(unique_class); tag.classList.add('music-tag');
         tag.dataset.tag = input.value; tag.textContent = input.value;
         tag.addEventListener('click', removeTag);
-        input.parentNode.prepend(tag);
+        parent_div.append(tag);
         input.value = '';
     }
 }
 
-function addEditTag() { __addTag(document.querySelector('#music-edit-tag-input'), 'music-edit-tag'); }
+function addEditTag() { __addTag(dom_edit_tag_input, dom_edit_tags, 'music-edit-tag'); }
 
-function addNewTag() { __addTag(document.querySelector('#music-new-tag-input'), 'music-new-tag'); }
+function addNewTag() { __addTag(dom_new_tag_input, dom_new_tags, 'music-new-tag'); }
 
 function removeTag(event) { event.currentTarget.remove(); }
 
