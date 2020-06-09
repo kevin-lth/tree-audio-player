@@ -397,7 +397,7 @@ async function handleMusicFile(method, token, parameters, request, response) {
             const music_file = data.getFileName('file');
             if (music_file === null || !accept_audio.isAccepted(newMimeType(data['rawData']['file']['mime_type']))) 
                 { bodyResponse(badRequest, '{}', response); await data.deleteAllTemporaryFiles(); return; }
-            function execute_before_processing(temporary_api_response) { bodyResponse(temporary_api_response.http_code, JSON.stringify(api_response.response), response); }
+            function execute_before_processing(temporary_api_response) { bodyResponse(temporary_api_response.http_code, JSON.stringify(temporary_api_response.response), response); }
             
             api_response = await API.setMusicFile(token, music_id, music_file, execute_before_processing);
             await data.deleteAllTemporaryFiles();
