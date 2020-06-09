@@ -29,11 +29,15 @@ header {
 #header-title {
     font-size: 40px;
     padding: 8px;
-    cursor: default;
     color: #ffffff;
     background-color: #22389e;
     border-radius: 10px;
     box-shadow: 0 0 4px 0 #000000 inset; 
+}
+
+#header-title > a {
+    color: inherit;
+    text-decoration: none;
 }
 
 #header-details {
@@ -79,6 +83,12 @@ main {
     box-shadow: 10px 10px 14px -12px #000000 inset, 0 -10px 14px -12px #000000 inset;
 }
 
+.icon {
+    width: 2em;
+    height: 2em;
+    cursor: pointer;
+}
+
 .category-list {
     display: flex;
     width: 100%;
@@ -87,22 +97,150 @@ main {
     flex-wrap: wrap;
 }
 
-.category {
+.category, #category-add {
     position: relative;
     width: 20%;
     padding: 2.5%;
-}
-
-.category > .owned-category-mark {
-    position: absolute;
-    right: 2.5%;
-    top: 2.5%;
-    width: 32px;
-    height: 32px;
+    text-align: center;
 }
 
 .category-cover {
     width: 80%;
+    height: 80%;
+    margin: calc(10% - 10px);
+    padding: 5px;
+    border: solid 5px transparent;
+    border-radius: 5px;
+    transition: transform 0.5s;
+}
+
+.category:hover .category-cover,  #category-add:hover .icon {
+    transform: scale(1.1);
+}
+
+.category-cover.category-selected {
+    border-color: #21a527;
+    box-shadow: 0 0 5px 0 #21a527 inset;
+    transition: border-color 0.2s, box-shadow 0.25s, transform 0.5s;
+}
+
+.category .category-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    overflow-wrap: break-word;
+}
+
+.category-info .category-full-name { margin: 0 8px; }
+
+.icon-owned { cursor: default; }
+
+#category-add .icon {
+    width: 60%;
+    height: 60%;
+    transition: transform 0.5s;
+}
+
+.category-details-self {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.category-details-self-recap {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.category-details-self-recap .category-cover {
+    width: 60%;
+}
+
+.category-details-info {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    flex-grow: 1;
+    font-size: 20px;
+    line-height: 40px;
+}
+
+.category-details-commands { text-align: center; }
+
+.music-list, .category-children-header { text-align: center; }
+
+.music-list {
+    max-height: 50vh;
+    padding: 2em;
+    overflow-y: auto;
+    box-shadow: 0 0 0.1em 0 #000000 inset;
+}
+
+.owned-music {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 20px;
+    line-height: 40px;
+    border-bottom: solid 1px #888888;
+}
+
+.music-track:after {
+    content: '.';
+    margin-right: 1em;
+}
+
+.music-tag {
+    color: #ffffff;
+    background-color: #17a2b8;
+    padding: 0.2em;
+    border-radius: 0.3em;
+}
+
+.music-duration:before { content: '('; }
+
+.music-duration:after {
+    content: ')';
+    margin-right: 1em;
+}
+
+.music-buttons {
+    margin-top: 0.5em;
+}
+
+#music-add .icon {
+    margin-top: 1em;
+    font-size: 20px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: start;
+    flex-wrap: wrap;
+}
+
+.form label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0.5em;
+}
+
+
+.form input, select {
+    font-size: 1em;
+    height: 1.5em;
+    margin-left: 1em;
+    border-radius: 0.2em;
 }
 
 #tab {
@@ -139,10 +277,16 @@ main {
 
 #audio-commands {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     margin: 0 5%;
     width: 90%;
 }
+
+.icon-play { display: none; }
+.icon-stop { display: none; }
+
+#audio-play-stop:not(.playing) > .icon-play { display: block; }
+#audio-play-stop.playing > .icon-stop { display: block; }
 
 #audio-progress-bar {
     width: 90%;
@@ -172,15 +316,16 @@ ul {
     padding: 0;
 }
 
+button {
+    border: none;
+    background-color: transparent;
+    font: unset;
+}
+
 @media (max-width: 1099px) {
     .category {
         width: 30%;
         padding: calc(calc(1 / 6) * 10%);
-    }
-    
-    .category > .owned-category-mark {
-        right: calc(calc(1 / 6) * 10%);
-        top: calc(calc(1 / 6) * 10%);
     }
 }
 
@@ -200,20 +345,11 @@ ul {
         width: 40%;
         padding: 5%;
     }
-    .category > .owned-category-mark {
-        right: 5%;
-        top: 5%;
-    }
 }
 
 @media (max-width: 547px) {
     .category {
         width: 80%; padding: 10%;
-    }
-    
-    .category > .owned-category-mark {
-        right: 10%;
-        top: 10%);
     }
 }
 

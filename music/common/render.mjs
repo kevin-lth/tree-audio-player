@@ -13,7 +13,10 @@ export function newRender(bindings) {
     }
 
     async function renderHome(token) {
-        const body = '<div class="welcome">Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren\'t logged in already, feel free to do so to access your music library. If you don\'t have an account, please contact an admin (see <a href="/html/about">About</a>).</div>';
+        const body = `<div class="welcome">
+                          Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren't logged in, please connect to access your music library.<br />
+                          If you don't have an account, feel free to contact an admin (see <a href="/html/about">About</a>).
+                      </div>`;
         return await renderPage(token, 'home', 'Home', body);
     }
     
@@ -71,7 +74,11 @@ export function newRender(bindings) {
                         }
                         body = `<div class="category-list category-private">
                                     ${body_categories}
-                                    <a id="category-add" class="category-add-button" href="/html/category/new" title="Add a new category">Add a new category</a>
+                                    <article class="category">
+                                        <a id="category-add" class="category-add-button" href="/html/category/new/" title="Add a new category">
+                                            <img class="icon" src="/assets/add.svg" draggable="false" />
+                                        </a>
+                                    </article>
                                 </div>`;
                         break;
                     case unauthorized: case internalServerError: default:
@@ -103,29 +110,45 @@ export function newRender(bindings) {
                                 for (let i = 0; i < musics.length; i++) {
                                     body_musics += owned ? `<article class="owned-music">
                                                                 ${renderMusic(musics[i])}
-                                                                <a id="music-edit-${musics[i].id}" class="music-edit-button" href="/html/music/edit?id=${musics[i].id}" title="${musics[i].full_name} - Edit" data-music-id="${musics[i].id}">Edit</a>
-                                                                <button id="music-delete-${musics[i].id}" class="music-delete-button" title="${musics[i].full_name} - Delete" data-music-id="${musics[i].id}">Delete</button>
+                                                                <div class="music-buttons">
+                                                                    <a id="music-edit-${musics[i].id}" class="music-edit-button" href="/html/music/edit?id=${musics[i].id}" title="${musics[i].full_name} - Edit" data-music-id="${musics[i].id}"><img class="icon" src="/assets/edit.svg" draggable="false" /></a>
+                                                                    <button id="music-delete-${musics[i].id}" class="music-delete-button" title="${musics[i].full_name} - Delete" data-music-id="${musics[i].id}">
+                                                                        <img class="icon" src="/assets/delete.svg" draggable="false" />
+                                                                    </button>
+                                                                </div>
                                                             </article>` : renderMusic(musics[i]);
                                 }
                                 body = `<div class="category-details">
-                                            <article title="${category.full_name}" class="category" data-category-id="${category.id}">
-                                                <img class="category-cover category-toggle category-cover-details" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
-                                                <span class="category-full-name">Full Name : ${category.full_name}</span>
-                                                <span class="category-short-name">Short Name : ${category.short_name}</span>
-                                                <span class="category-creator">Created by : ${category.creator}</span>
-                                                <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
-                                                ${owned ? `<a id="category-edit-${category.id}" class="category-edit-button" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}">Edit</a>` : ''}
-                                                ${owned ? `<button id="category-delete-${category.id}" class="category-delete-button" title="${category.full_name} - Delete" data-category-id="${category.id}">Delete</button>` : ''}
-                                                ${category.is_public && !owned ? `<button id="category-request-${category.id}" class="category-request-button" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
-                                                ${!owned ? `<button id="category-revoke-${category.id}" class="category-revoke-button" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
+                                            <article title="${category.full_name}" class="category-details-self" data-category-id="${category.id}">
+                                                <div class="category-details-self-recap">
+                                                    <button title="Click to toggle from playlist">
+                                                        <img class="category-cover category-toggle" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
+                                                    </button>
+                                                    <div class="category-details-self-info">
+                                                        <div class="category-details-info">
+                                                            <span class="category-full-name">Full Name : ${category.full_name}</span>
+                                                            <span class="category-short-name">Short Name : ${category.short_name}</span>
+                                                            <span class="category-creator">Created by : ${category.creator}</span>
+                                                            <span class="category-public">Public : ${category.is_public ? 'Yes' : 'No'}</span>
+                                                        </div>
+                                                        <div class="category-details-commands">
+                                                            ${owned ? `<a id="category-edit-${category.id}" class="category-edit-button" href="/html/category/edit?id=${category.id}" title="${category.full_name} - Edit" data-category-id="${category.id}"><img class="icon" src="/assets/edit.svg" draggable="false" /></a>` : ''}
+                                                            ${owned ? `<button id="category-delete-${category.id}" class="category-delete-button" title="${category.full_name} - Delete" data-category-id="${category.id}">
+                                                                           <img class="icon" src="/assets/delete.svg" draggable="false" />
+                                                                       </button>` : ''}
+                                                            ${category.is_public && !owned ? `<button id="category-request-${category.id}" class="category-request-button" title="${category.full_name} - Request Access" data-category-id="${category.id}">Request personal access</button>` : ''}
+                                                            ${!owned ? `<button id="category-revoke-${category.id}" class="category-revoke-button" title="${category.full_name} - Revoke Access" data-category-id="${category.id}">Revoke personal access</button>` : ''}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="music-list">
+                                                    <h3 class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>) :</h3>
+                                                    ${body_musics}
+                                                    <a id="music-add" class="music-add-button" href="/html/music/new?category_id=${category.id}" title="Add a new music" ><img class="icon" src="/assets/add.svg" draggable="false" /></a>
+                                                </div>
                                             </article>
-                                            <span class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</span>
+                                            <h3 class="category-children-header">Children (<span class="category-children-count">${category.children.length}</span>) :</h3>
                                             <div class="category-list">${body_children}</div>
-                                            <span class="category-musics-header">Musics (<span class="category-musics-count">${musics.length}</span>) :</span>
-                                            <div class="music-list">
-                                                ${body_musics}
-                                                <a id="music-add" class="music-add-button" href="/html/music/new?category_id=${category.id}" title="Add a new music" >Add a new music</a>
-                                            </div>
                                         </div>`;
                                 break;
                             default:
@@ -163,15 +186,24 @@ export function newRender(bindings) {
                                         if (owned_categories[i].id !== id) { parent_options += `<option value="${owned_categories[i].id}">${owned_categories[i].full_name}</option>`; }
                                     }
                                     body = `<div class="category-edit">
-                                                <img class="category-cover category-cover-edit" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Current Cover" />
-                                                <form id="category-edit-form" data-category-id="${category.id}">
-                                                    <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="required" maxlength="50" />
-                                                    <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="required" maxlength="20" />
-                                                    <select id="category-edit-parent" name="parent_id">
-                                                        ${parent_options}
-                                                    </select>
-                                                    <input id="category-edit-is-public" type="checkbox" name="is_public" value="true" ${category.is_public ? 'checked="true"' : ''} />
-                                                    <input id="category-edit-cover" type="file" name="cover" accept="image/*" />
+                                                <form id="category-edit-form" class="form" data-category-id="${category.id}">
+                                                    <label>Full Name :
+                                                        <input id="category-edit-full-name" type="text" name="full_name" value="${category.full_name}" required="required" maxlength="50" />
+                                                    </label>
+                                                    <label>Short Name :
+                                                        <input id="category-edit-short-name" type="text" name="short_name" value="${category.short_name}" required="required" maxlength="20" />
+                                                    </label>
+                                                    <label>Parent Category :
+                                                        <select id="category-edit-parent" name="parent_id">
+                                                            ${parent_options}
+                                                        </select>
+                                                    </label>
+                                                    <label>Is Public :
+                                                        <input id="category-edit-is-public" type="checkbox" name="is_public" value="true" ${category.is_public ? 'checked="true"' : ''} />
+                                                    </label>
+                                                    <label>Cover (leave empty for unchanged) :
+                                                        <input id="category-edit-cover" type="file" name="cover" accept="image/*" />
+                                                    </label>
                                                 </form>
                                                 <button id="category-edit-submit" type="submit">Update</button>
                                             </div>`;
@@ -313,12 +345,17 @@ export function newRender(bindings) {
     }
     
     async function renderSettings(token) {
-        const body = '<div class="settings">For now, there are no settings !</div>';
+        const body = '<div class="settings">Currently, no settings are available.</div>';
         return await renderPage(token, 'settings', 'Settings', body);
     }
     
     async function renderAbout(token) {
-        return await renderPage(token, 'about', 'About', '<div class="about">Powered by <a href="https://github.com/kevin-lth/tree-audio-player">Tree Audio Player</a><br />Code licensed under <a href="https://github.com/kevin-lth/tree-audio-player/blob/master/LICENSE">GPL 3.0</a></div>');
+        const body = `<div class="about">
+                          Powered by <a href="https://github.com/kevin-lth/tree-audio-player">Tree Audio Player</a>
+                          <br />Code licensed under <a href="https://github.com/kevin-lth/tree-audio-player/blob/master/LICENSE">GPL 3.0</a>
+                          <br />Contact: <a href="https://github.com/kevin-lth/">@kevin-lth</a>
+                      </div>`;
+        return await renderPage(token, 'about', 'About', body);
     }
 
     // Internal render functions that are used by more specific functions for each page : they are the templates that will be filled with data.
@@ -361,8 +398,8 @@ export function newRender(bindings) {
         const session_status = await bindings.getSessionStatus(token);
         const logged = session_status.http_code === OK && session_status.response.username !== null;
          // We don't use a form with POST because that would redirect to the whole page to the API, which we don't want. We will handle logout with javascript.
-        return `<a href="/html/" id="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" /></a>
-                <h1 id="header-title">Tree Audio Player</h1>
+        return `<a href="/html/" id="header-logo"><img src="/assets/logo.svg" alt="Tree with a music note" draggable="false" /></a>
+                <h1 id="header-title"><a href="/html/">Tree Audio Player</a></h1>
                 <span id="header-details">
                     <span id="header-hello">Hello, ${logged ? `<span id="header-username">${session_status.response.username}</span>` : 'visitor'} !</span>
                     ${!logged ? '<a href="/html/login/" id="header-login">Login</a>' : ''}
@@ -371,7 +408,7 @@ export function newRender(bindings) {
     }
     
     function renderNavElement(page, selected_page, href, svg_link, text, show_text) {
-        return `<li class="nav-element ${page === selected_page ? 'nav-active' : ''}"><a href="${href}"><img src="${svg_link}" alt="${text}" />${show_text ? text : ''}</a></li>`;
+        return `<li class="nav-element ${page === selected_page ? 'nav-active' : ''}"><a href="${href}"><img src="${svg_link}" alt="${text}" draggable="false" />${show_text ? text : ''}</a></li>`;
     }
     
     // TODO: SVG Icons for nav elements
@@ -404,10 +441,16 @@ export function newRender(bindings) {
     function renderCategory(category, account_username) {
         const owned = (category.creator === account_username);
         return `<article title="${category.full_name}" class="category ${owned ? 'owned-category' : ''}" data-category-id="${category.id}">
-                    <img class="category-cover category-toggle" src="/api/category/cover?id=${category.id}" title="Click to toggle from playlist" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" />
-                    ${owned ? '<img src="" class="owned-category-mark" alt="Owned Category" />' : ''}
-                    <span class="category-full-name">${category.full_name}</span>
-                    <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">Details</a>
+                    <button title="Click to toggle from playlist">
+                        <img class="category-cover category-toggle" src="/api/category/cover?id=${category.id}" alt="${category.full_name}'s Cover - Click to toggle from playlist" data-category-id="${category.id}" draggable="false" />
+                    </button>
+                    <div class="category-info">
+                        ${owned ? '<img class="icon-owned icon" src="/assets/star.svg" alt="Owned Category" draggable="false" />' : ''}
+                        <span class="category-full-name">${category.full_name}</span>
+                        <a class="category-details" title="${category.full_name} - Details" href="/html/category/details?id=${category.id}" data-category-id="${category.id}">
+                            <img class="icon" src="/assets/info.svg" draggable="false" />
+                        </a>
+                    </div>
                 </article>`;
     }
     
@@ -428,8 +471,8 @@ export function newRender(bindings) {
     }
     
     async function renderTab() {
-        return `<button id="tab-remove-all">Remove all</button>
-                <button id="audio-random">Randomize</button>
+        return `<button id="tab-remove-all" title="Remove all Musics"><img class="icon" src="/assets/remove.svg" draggable="false" /></button>
+                <button id="audio-random" title="Randomize Musics"><img class="icon" src="/assets/random.svg" draggable="false" /></button>
                 <ul id="tab-selected-musics"></ul>`;
     }
 
@@ -443,9 +486,12 @@ export function newRender(bindings) {
                     ${sources}
                 </audio>
                 <div id="audio-commands">
-                    <button id="audio-previous" class="audio-play">Previous</button>
-                    <button id="audio-play-stop">Play/Stop</button>
-                    <button id="audio-next">Next</button>
+                    <button id="audio-previous" class="audio-play" title="Previous Music"><img class="icon" src="/assets/previous.svg" draggable="false" /></button>
+                    <button id="audio-play-stop" title="Play / Pause Music">
+                        <img class="icon icon-play" src="/assets/play.svg" draggable="false" />
+                        <img class="icon icon-stop" src="/assets/pause.svg" draggable="false" />
+                    </button>
+                    <button id="audio-next" title="Next Music"><img class="icon" src="/assets/next.svg" draggable="false" /></button>
                 </div>
                 <input id="audio-progress-bar" type="range" min="0" max="0" step="0.1" />
                 <div id="audio-info">
