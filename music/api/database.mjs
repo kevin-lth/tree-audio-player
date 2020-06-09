@@ -128,24 +128,24 @@ export async function newConnection() {
                 getAllCategoryChildren: await db.prepare(
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.creator_id=account.account_id AND category_links.parent_category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC;`),
+                        WHERE category.creator_id=account.account_id AND category_links.parent_category_id = $category_id AND category_links.depth > 0 ORDER BY depth ASC, full_name ASC;`),
                 getAllCategoryDirectChildren: await db.prepare(
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.creator_id=account.account_id AND category_links.parent_category_id = $category_id AND category_links.depth = 1;`),
+                        WHERE category.creator_id=account.account_id AND category_links.parent_category_id = $category_id AND category_links.depth = 1 ORDER BY full_name ASC;`),
                 getCategorySymlinks: await db.prepare(
                     `SELECT category.category_id, category.full_name, category.short_name, category.is_public, category.creator_id, account.username as creator FROM category, account 
                         INNER JOIN category_links ON category.category_id = category_links.child_category_id 
-                        WHERE category.creator_id=account.account_id AND category.category_id = $category_id AND category_links.depth = -1;`),
+                        WHERE category.creator_id=account.account_id AND category.category_id = $category_id AND category_links.depth = -1 ORDER BY full_name ASC;`),
                 getAllPublicCategories: await db.prepare(
                     `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
-                        WHERE category.creator_id=account.account_id AND is_public=1;`),
+                        WHERE category.creator_id=account.account_id AND is_public=1 ORDER BY full_name ASC;`),
                 getAllPersonalCategories: await db.prepare(
                     `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
-                        WHERE category.creator_id=account.account_id AND (creator_id=$account_id OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id));`),
+                        WHERE category.creator_id=account.account_id AND (creator_id=$account_id OR category_id IN (SELECT category_id FROM account_categories WHERE account_id=$account_id)) ORDER BY full_name ASC;`),
                 getAllOwnedCategories: await db.prepare(
                     `SELECT category_id, full_name, short_name, is_public, creator_id, account.username as creator FROM category, account 
-                        WHERE category.creator_id=account.account_id AND creator_id=$account_id;`),
+                        WHERE category.creator_id=account.account_id AND creator_id=$account_id ORDER BY full_name ASC;`),
                 updateCategory: await db.prepare('UPDATE category SET full_name=$full_name, short_name=$short_name, is_public=$is_public WHERE category_id=$category_id;'),
                 deleteCategory: await db.prepare('DELETE FROM category WHERE category_id = $category_id;'),
                 setCategoryCoverURL: await db.prepare('UPDATE category SET cover_url=$cover_url WHERE category_id=$category_id;'),
@@ -178,7 +178,7 @@ export async function newConnection() {
                     `SELECT COUNT(1) AS checkCount FROM category WHERE (category_id=$category_id AND 
                         creator_id=$account_id) OR EXISTS(SELECT 1 FROM account WHERE is_admin=1 AND account_id=$account_id);`),
                 deleteCategoryAccess: await db.prepare(`DELETE FROM account_categories WHERE account_id=$account_id AND category_id=$category_id;`),
-                getAllMusicsFromCategory: await db.prepare(`SELECT music.music_id, music.full_name, music.category_id, music.track, music.duration, category.short_name FROM music, category WHERE music.category_id=category.category_id AND music.category_id=$category_id;`),
+                getAllMusicsFromCategory: await db.prepare(`SELECT music.music_id, music.full_name, music.category_id, music.track, music.duration, category.short_name FROM music, category WHERE music.category_id=category.category_id AND music.category_id=$category_id ORDER BY music.track ASC, music.full_name ASC;`),
                 getAllMusicsFromCategoryAndChildren: await db.prepare(
                     `SELECT music.music_id, music.full_name, music.category_id, music.track, music.duration, category.short_name FROM music, category WHERE music.category_id=category.category_id AND music.category_id IN 
                         (SELECT child_category_id FROM category_links WHERE parent_category_id=$category_id);`),
