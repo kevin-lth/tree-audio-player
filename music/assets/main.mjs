@@ -12,6 +12,14 @@ const known_assets = {
     'main.css': { url: "css/main.css", mime_type: "text/css", etag: "01" },
     'logo.svg': { url: "svg/logo.svg", mime_type: "image/svg+xml", etag: "01" },
     'favicon.svg': { url: "svg/favicon.svg", mime_type: "image/svg+xml", etag: "01" },
+    'star.svg': { url: "svg/star.svg", mime_type: "image/svg+xml", etag: "01" },
+    'info.svg': { url: "svg/info.svg", mime_type: "image/svg+xml", etag: "01" },
+    'delete.svg': { url: "svg/delete.svg", mime_type: "image/svg+xml", etag: "01" },
+    'previous.svg': { url: "svg/previous.svg", mime_type: "image/svg+xml", etag: "01" },
+    'next.svg': { url: "svg/next.svg", mime_type: "image/svg+xml", etag: "01" },
+    'play.svg': { url: "svg/play.svg", mime_type: "image/svg+xml", etag: "01" },
+    'pause.svg': { url: "svg/pause.svg", mime_type: "image/svg+xml", etag: "01" },
+    'random.svg': { url: "svg/random.svg", mime_type: "image/svg+xml", etag: "01" },
 }
 
 const forceCacheControl = false;
