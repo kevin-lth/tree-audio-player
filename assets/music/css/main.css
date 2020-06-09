@@ -1,7 +1,7 @@
 body {
     display: grid;
     grid-template-columns: minmax(auto, 240px) 1fr;
-    grid-template-rows: minmax(auto, 96px) 1fr minmax(auto, 96px);
+    grid-template-rows: minmax(auto, 112px) 1fr minmax(auto, 128px);
     height: 100vh;
     width: 100vw;
     margin: 0;
@@ -249,12 +249,66 @@ main {
     font-size: 1.5em;
     cursor: pointer;
     background-color: #cccccc;
+    border: solid 1px #000000;
     border-radius: 0.2em;
+    transition: background-color 0.5s;
 }
+
+.submit:hover { background-color: #bbbbbb; }
 
 #music-edit-tags, #music-new-tags {
     margin: 1em 0.5em;;
     cursor: pointer;
+}
+
+.music-tag-add {
+    padding: 0.25em;
+    cursor: pointer;
+    background-color: #dddddd;
+    border: solid 1px #000000;
+    border-radius: 0.2em;
+    transition: background-color 0.5s;
+}
+
+.music-tag-add:hover { background-color: #cccccc; }
+
+#playlist-select-all {
+    padding: 0.25em;
+    margin: 1em 0.5em;
+    cursor: pointer;
+    background-color: #dddddd;
+    border: solid 1px #000000;
+    border-radius: 0.2em;
+    transition: background-color 0.5s;
+}
+
+#playlist-select-all:hover { background-color: #cccccc; }
+
+.category-playlist-header {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.playlist-music, .tab-music {
+    padding: 0.75em;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.playlist-music.active {
+    display: none;
+}
+
+.music-prefix {
+    padding: 0.2em;
+    margin-right: 0.5em;
+    color: #ffffff;
+    background-color: #007bff;
+    border-radius: 0.2em;
+}
+
+.music-full-name {
+    margin-right: 0.5em;
 }
 
 #tab {
@@ -275,8 +329,13 @@ main {
     transform: translateY(0);
 }
 
+#tab-commands {
+    margin: 0.5em;
+}
+
 .tab-music.active {
-    background-color: #ffffff; /* TODO */
+    background-color: #ffffff;
+    border-radius: 0 0 1em 0;
 }
 
 #footer {
@@ -294,7 +353,10 @@ main {
     justify-content: space-around;
     margin: 0 5%;
     width: 90%;
+    font-size: 12px;
 }
+
+#audio-info { font-size: 20px; }
 
 .icon-play { display: none; }
 .icon-stop { display: none; }
@@ -313,13 +375,13 @@ main {
 }
 
 #audio-title {
-    margin-left: 10%;
-    width: 80%;
+    margin-left: 15%;
+    width: 70%;
     text-align: center;
 }
 
 #audio-duration {
-    width: 5%;
+    width: 10%;
     margin-right: 5%;
     text-align: end;
 }
@@ -352,7 +414,7 @@ button {
     
     body {
         grid-template-columns: minmax(auto, 72px) 1fr;
-        grid-template-rows: minmax(auto, 72px) 1fr minmax(auto, 80px);
+        grid-template-rows: minmax(auto, 72px) 1fr minmax(auto, 112px);
     }
     
     .category {

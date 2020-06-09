@@ -16,6 +16,7 @@ export function newRender(bindings) {
         const body = `<div class="welcome">
                           Welcome to <span class="welcome-name">Tree Audio Player</span> ! If you aren't logged in, please connect to access your music library.<br />
                           If you don't have an account, feel free to contact an admin (see <a href="/html/about">About</a>).
+                          To toggle the music tab, please click anywhere on the brown at the bottom of the page.
                       </div>`;
         return await renderPage(token, 'home', 'Home', body);
     }
@@ -360,7 +361,7 @@ export function newRender(bindings) {
     async function renderPlaylist(token) {
         const body = `<div class="playlist">
                           <div class="playlist-header">
-                              You can select musics listed here. Musics will then be added to the music player on the bottom. To add categories here, please select them on either the public or personal categories pages.
+                              Musics from selected categories can be added by clicking on their name. Alternatively, you can add all musics from a category by clicking on its name or from all selected categories. Tip : unselecting a category doesn't remove the selected musics from that category !
                           </div>
                           <button id="playlist-select-all">Select all</button>
                           <div class="selected-category-list"> <!-- This is handled by the client only -->
@@ -490,14 +491,16 @@ export function newRender(bindings) {
                     ${category_short_name !== null ? `<span class="music-prefix">${category_short_name}</span>` : ''}
                     <span class="music-track">${music.track}</span>
                     <span class="music-full-name">${music.full_name}</span>
-                    ${tags}
+                    <span class="music-tags">${tags}</span>
                     <span class="music-duration">${newDuration(music.duration).print()}</span>
                 </article>`;
     }
     
     async function renderTab() {
-        return `<button id="tab-remove-all" title="Remove all Musics"><img class="icon" src="/assets/remove.svg" draggable="false" /></button>
-                <button id="audio-random" title="Randomize Musics"><img class="icon" src="/assets/random.svg" draggable="false" /></button>
+        return `<div id="tab-commands">
+                    <button id="tab-remove-all" title="Remove all Musics"><img class="icon" src="/assets/remove.svg" draggable="false" /></button>
+                    <button id="audio-random" title="Randomize Musics"><img class="icon" src="/assets/random.svg" draggable="false" /></button>
+                </div>
                 <ul id="tab-selected-musics"></ul>`;
     }
 

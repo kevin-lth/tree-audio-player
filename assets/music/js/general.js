@@ -327,17 +327,17 @@ function __createMusic(music) {
     const music_li = document.createElement('li');
     if (selected_musics.indexOf(music.id) !== -1) { music_li.classList.add('active'); }
     music_li.dataset.categoryId = music.category_id; music_li.dataset.musicId = music.id; music_li.dataset.title = music.full_name; music_li.dataset.track = music.track;
-    const music_prefix = document.createElement('span'), music_track = document.createElement('span'), music_title = document.createElement('span'), music_duration = document.createElement('span'), music_tags = document.createElement('span');
+    const music_prefix = document.createElement('span'), music_track = document.createElement('span'), music_title = document.createElement('span'), music_tags = document.createElement('span');
     music_prefix.classList.add('music-prefix'); music_prefix.textContent = music.prefix;
     music_track.classList.add('music-track'); music_track.textContent = music.track;
     music_title.classList.add('music-full-name'); music_title.textContent = music.full_name;
-    music_duration.classList.add('music-duration'); music_duration.textContent = printDuration(music.duration);
+    music_tags.classList.add('music-tags');
     for (let k = 0; k < music.tags.length; k++) {
         const music_tag = document.createElement('span');
         music_tag.classList.add('music-tag'); music_tag.textContent = music.tags[k];
         music_tags.appendChild(music_tag);
     }
-    music_li.appendChild(music_prefix); music_li.appendChild(music_track); music_li.appendChild(music_title); music_li.appendChild(music_tags); music_li.appendChild(music_duration);
+    music_li.appendChild(music_prefix); music_li.appendChild(music_track); music_li.appendChild(music_title); music_li.appendChild(music_tags);
     return music_li;
 }
 

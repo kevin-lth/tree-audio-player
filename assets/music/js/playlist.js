@@ -14,8 +14,8 @@ function __createPlaylistMusic(music) {
 function __createPlaylistCategory(category, musics) {
     const category_article = document.createElement('article');
     category_article.classList.add('playlist-category'); category_article.dataset.categoryId = category.id; category_article.dataset.fullName = category.full_name; // The full name is used to sort categories afterwards
-    const category_header = document.createElement('h4');
-    category_header.classList.add('category-header'); category_header.textContent = category.full_name + ' (' + musics.length + ')';
+    const category_header = document.createElement('h2');
+    category_header.classList.add('category-playlist-header'); category_header.textContent = category.full_name + ' (' + musics.length + ')';
     category_header.addEventListener('click', (event) => { __addAllMusicsFromCategoryToTab(event.currentTarget.parentNode); });
     const category_musics = document.createElement('ul');
     const result_musics = [];
