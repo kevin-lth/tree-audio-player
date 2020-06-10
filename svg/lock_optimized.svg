@@ -9,5 +9,10 @@
    </cc:Work>
   </rdf:RDF>
  </metadata>
- <path transform="matrix(.3042 -6.6043 -4.7496 -.38637 74.059 84.3)" d="m6.7918 14.245 2.8231-4.2757 2.2914 4.5827z" fill-rule="evenodd" stop-color="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.2333"/>
+ <ellipse cx="16.983" cy="14.344" rx="7.5854" ry="12.367" fill="none" stop-color="#000000" stroke="#000" stroke-linecap="round" stroke-width="3.954"/>
+ <g fill-rule="evenodd">
+  <rect x="4.2333" y="14.742" width="25.5" height="19.125" stop-color="#000000"/>
+  <rect x="15.389" y="23.906" width="3.1875" height="4.7812" fill="#999" stop-color="#000000"/>
+  <circle cx="16.983" cy="22.312" r="3.1875" fill="#999" stop-color="#000000"/>
+ </g>
 </svg>

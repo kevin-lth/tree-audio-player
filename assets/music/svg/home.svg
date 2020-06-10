@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" version="1.1" viewBox="0 0 33.867 33.867" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <metadata>
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <g fill-rule="evenodd">
+  <rect x="2.5537" y="15.195" width="28.825" height="18.666" stop-color="#000000"/>
+  <rect x="-9.2604" y="7.6729" width="2.9104" height="2.9104" fill="#fff" stop-color="#000000"/>
+  <rect x="7.2067" y="22.788" width="4.1179" height="3.6044" fill="#999" stop-color="#000000"/>
+  <rect x="16.452" y="25.751" width="4.1179" height="8.11" fill="#999" stop-color="#000000"/>
+  <g>
+   <path transform="matrix(1.9454 0 0 1.0074 -16.491 -3.1296)" d="m17.198 3.175 8.7072 15.081-8.7072-1e-6h-8.7072l4.3536-7.5406z" stop-color="#000000"/>
+   <rect x="24.687" y="2.8593" width="4.1179" height="9.4925" stop-color="#000000"/>
+   <rect x="8.6282" y="14.711" width="1.0761" height="12.283" stop-color="#000000"/>
+   <rect transform="rotate(-90)" x="-25.217" y="3.1146" width="1.0761" height="12.283" stop-color="#000000"/>
+  </g>
+  <rect x="16.404" y="9.2604" width="4.1179" height="3.6044" fill="#999" stop-color="#000000"/>
+  <rect transform="rotate(-90)" x="-11.555" y="11.995" width="1.0761" height="12.283" stop-color="#000000"/>
+  <rect x="17.867" y="5.4384" width="1.0761" height="12.283" stop-color="#000000"/>
+ </g>
+</svg>
