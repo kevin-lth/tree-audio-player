@@ -8,6 +8,8 @@ let selected_musics = [];
 let current_music_index = 0;
 let current_audio_time = 0;
 
+let settings = { include_all_children: false };
+
 let has_music_changed = true;
 
 const category_musics_info = {};
@@ -15,7 +17,7 @@ const music_info = {};
 const active_playlist_musics = {}; // This is redundant with selected_musics, but it allows to cache HTML Elements to prevent searching for them again
 
 // Recurring querySelector
-let dom_audio, dom_audio_sources, dom_audio_play_stop, dom_audio_progress_bar, dom_audio_title, dom_audio_duration, dom_tab_selected_musics;
+let dom_audio, dom_audio_sources, dom_audio_play_stop, dom_audio_progress_bar, dom_audio_title, dom_audio_duration, dom_tab_selected_musics, dom_settings_include_all_children;
 let dom_edit_tag_input, dom_new_tag_input, dom_edit_tags, dom_new_tags;
 
 function loadQuerySelectors() {
@@ -26,6 +28,8 @@ function loadQuerySelectors() {
     dom_audio_title = document.getElementById('audio-title');
     dom_audio_duration = document.getElementById('audio-duration');
     dom_tab_selected_musics = document.getElementById('tab-selected-musics');
+    
+    dom_settings_include_all_children = document.getElementById('settings-include-all-children');
     
     dom_edit_tag_input = document.getElementById('music-edit-tag-input');
     dom_new_tag_input = document.getElementById('music-new-tag-input');
@@ -95,19 +99,24 @@ function updateAllEventListeners() {
         navigator.mediaSession.setActionHandler('stop', __removeAllMusicsFromTab);
     }
 
+
     updateEventListener('#login-submit', 'click', login);
     updateEventListener('#header-logout', 'click', logout);
+    
+    
+    updateEventListener('#settings-include-all-children', 'change', () => { updateSettings('include_all_children'); });
 };
 
 // LocalStorage
 
-function saveToLocalStorage(selection = ['selected_categories', 'selected_musics', 'current_music_index', 'current_audio_time']) {
+function saveToLocalStorage(selection = ['selected_categories', 'selected_musics', 'current_music_index', 'current_audio_time', 'settings']) {
     for (let i = 0; i < selection.length; i++) {
         switch (selection[i]) {
             case 'selected_categories': localStorage.setItem('selected_categories', JSON.stringify(selected_categories)); break;
             case 'selected_musics': localStorage.setItem('selected_musics', JSON.stringify(selected_musics)); break;
             case 'current_music_index': localStorage.setItem('current_music_index', JSON.stringify(current_music_index)); break;
-            case 'current_audio_time': localStorage.setItem('current_audio_time', JSON.stringify(current_audio_time));break;
+            case 'current_audio_time': localStorage.setItem('current_audio_time', JSON.stringify(current_audio_time)); break;
+            case 'settings': localStorage.setItem('settings', JSON.stringify(settings)); break;
         }
     }
 }
@@ -124,6 +133,7 @@ function loadFromLocalStorage() {
         selected_musics = JSON.parse(__loadValueFromLocalStorage('selected_musics', []));
         current_music_index = JSON.parse(__loadValueFromLocalStorage('current_music_index', 0));
         current_audio_time = JSON.parse(__loadValueFromLocalStorage('current_audio_time', 0));
+        settings = JSON.parse(__loadValueFromLocalStorage('settings', { include_all_children: false }));
     }
     catch (error) { console.log('[LocalStorage] Failed loading data ! error = ' + error); }
 }
@@ -400,7 +410,16 @@ function __removeAllMusicsFromTab() {
 }
 
 // Settings
-// TODO : Add settings
+
+function loadSettings() {
+    if (dom_settings_include_all_children !== null) { dom_settings_include_all_children.checked = settings.include_all_children; }
+}
+
+function updateSettings(setting) {
+    switch (setting) {
+        case 'include_all_children': settings.include_all_children = dom_settings_include_all_children.checked; saveToLocalStorage(['settings']); break;
+    }
+}
 
 // Load
 
@@ -409,6 +428,7 @@ function onLoad() {
     loadQuerySelectors();
     updateAllEventListeners();
     loadSelectedMusics();
+    loadSettings();
 }
 
 window.addEventListener('DOMContentLoaded', onLoad);

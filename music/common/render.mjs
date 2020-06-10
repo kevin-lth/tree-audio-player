@@ -375,7 +375,11 @@ export function newRender(bindings) {
     }
     
     async function renderSettings(token) {
-        const body = '<div class="settings">Currently, no settings are available.</div>';
+        const body = `<div class="settings form">
+                          <label>Include musics from indirect children (may cause unexpected behavior !)
+                              <input id="settings-include-all-children" type="checkbox" />
+                          </label>
+                      </div>`;
         return await renderPage(token, 'settings', 'Settings', body);
     }
     
@@ -446,7 +450,6 @@ export function newRender(bindings) {
                 </li>`;
     }
     
-    // TODO: SVG Icons for nav elements
     async function renderNavElements(token, selected_page, show_text) {
         const session_status = await bindings.getSessionStatus(token);
         const logged = session_status.http_code === OK && session_status.response.username !== null;

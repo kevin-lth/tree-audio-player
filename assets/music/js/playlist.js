@@ -56,7 +56,8 @@ function loadSelectedCategories() {
                 }
                 category_musics_info[category_result.id] = category_musics_list;
             }
-            Promise.all([API('GET', '/api/category/resource?id=' + selected_categories[i]), API('GET', '/api/category/music?id=' + selected_categories[i])]).then(loadMusics);
+            const str_include_all_children = settings.include_all_children ? '&include_all_children=true' : '';
+            Promise.all([API('GET', '/api/category/resource?id=' + selected_categories[i]), API('GET', '/api/category/music?id=' + selected_categories[i] + str_include_all_children)]).then(loadMusics);
         }
     }
 }

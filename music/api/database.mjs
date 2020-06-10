@@ -40,10 +40,9 @@ export async function newConnection() {
                     music_id INTEGER PRIMARY KEY,
                     full_name TEXT NOT NULL,
                     track INTEGER NOT NULL,
-                    duration INTEGER NOT NULL,
+                    duration INTEGER DEFAULT 0 NOT NULL,
                     category_id INTEGER NOT NULL,
-                    FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE,
-                    FOREIGN KEY (uploader_id) REFERENCES account (account_id) ON DELETE CASCADE
+                    FOREIGN KEY (category_id) REFERENCES category (category_id) ON DELETE CASCADE
                 );`),
             createTagTable: await db.prepare(
                 `CREATE TABLE IF NOT EXISTS tag (

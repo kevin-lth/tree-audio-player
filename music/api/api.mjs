@@ -51,14 +51,11 @@ export function getAPI() {
 
     async function registerAccount(token, account) {
         if (!allowRegistration) { return newAPIResponse({}, notFound); }
+        if (!(await __prepareConnection())) { return newAPIResponse({}, internalServerError); }
         
-        const check_session = await __checkSession(token);
-        if (check_session.response === null) { return check_session; }
-        else {
-            const account_id = await connection.createAccount(account);
-            if (account_id === -1) { return newAPIResponse({}, forbidden); } // The account must already exist
-            else { return newAPIResponse({ id : account_id }, OK); }
-        }
+        const account_id = await connection.createAccount(account);
+        if (account_id === -1) { return newAPIResponse({}, forbidden); } // The account must already exist
+        else { return newAPIResponse({ id : account_id }, OK); }
     }
 
     async function loginAccount(token, account) {
@@ -94,7 +91,8 @@ export function getAPI() {
         if (check_session.response === null) { return check_session; }
         else {
             const session = check_session.response;
-            if (parent_category_id !== undefined && 
+            console.log(session, parent_category_id);
+            if (parent_category_id !== undefined && parent_category_id !== -1 && 
                 !(await connection.checkCategoryOwnership(parent_category_id, session.account_id))) { return newAPIResponse({}, unauthorized); }
             const category_id = await connection.createCategory(id_less_category, session.account_id);
             if (category_id === -1) { return newAPIResponse({}, badRequest); }
@@ -132,7 +130,7 @@ export function getAPI() {
         else {
             const session = check_session.response;
             if (!(await connection.checkCategoryOwnership(category_id, session.account_id)) ||
-                (parent_category_id !== undefined && !(await connection.checkCategoryOwnership(parent_category_id, session.account_id)))) 
+                (parent_category_id !== undefined && parent_category_id !== -1 && !(await connection.checkCategoryOwnership(parent_category_id, session.account_id)))) 
                     { return newAPIResponse({}, unauthorized); }
             const previous_category = await connection.getCategory(category_id); // We take the category just in case the parent ID is invalid and we have to rollback
             if (previous_category === null) { return newAPIResponse({}, badRequest); }
