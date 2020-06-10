@@ -27,11 +27,15 @@ export function newRender(bindings) {
         if (session_status.http_code === OK) {
             if (session_status.response.username === null) {
             body = `<div class="login">
-                        <form id="login-form">
-                            <input id="login-username" type="text" name="username" required="required" maxlength="16" />
-                            <input id="login-password" type="password" name="password" required="required" maxlength="32" />
+                        <form id="login-form" class="form">
+                            <label>Username : 
+                                <input id="login-username" type="text" name="username" required="required" maxlength="16" />
+                            </label>
+                            <label>Password :
+                                <input id="login-password" type="password" name="password" required="required" maxlength="32" />
+                            </label>
                         </form>
-                        <button id="login-submit" type="submit">Log In</button>
+                        <button id="login-submit" class="submit" type="submit">Login</button>
                         <span id="login-message"></span>
                     </div>`;
             } else { body = already_logged_in; }
