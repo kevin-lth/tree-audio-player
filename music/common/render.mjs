@@ -433,22 +433,27 @@ export function newRender(bindings) {
                 </span>`;
     }
     
-    function renderNavElement(page, selected_page, href, svg_link, text, show_text) {
-        return `<li class="nav-element ${page === selected_page ? 'nav-active' : ''}"><a href="${href}"><img src="${svg_link}" alt="${text}" draggable="false" />${show_text ? text : ''}</a></li>`;
+    function renderNavElement(page, selected_page, href, svg_icon, text, show_text) {
+        return `<li class="nav-element ${page === selected_page ? 'active' : ''}" title="${text}">
+                    <a href="${href}">
+                        <img class="icon" src="/assets/${svg_icon}.svg" alt="${text}" draggable="false" />
+                        <span class="nav-text">${show_text ? text : ''}</span>
+                    </a>
+                </li>`;
     }
     
     // TODO: SVG Icons for nav elements
     async function renderNavElements(token, selected_page, show_text) {
         const session_status = await bindings.getSessionStatus(token);
         const logged = session_status.http_code === OK && session_status.response.username !== null;
-        const user_only_elements = (logged) ? `${renderNavElement('category_public', selected_page, '/html/category/public/', '', 'Public Categories', show_text)}
-                                               ${renderNavElement('category_personal', selected_page, '/html/category/personal/', '', 'Personal Categories', show_text)}
-                                               ${renderNavElement('playlist', selected_page, '/html/playlist/', '', 'Playlist', show_text)}` : '';
+        const user_only_elements = (logged) ? `${renderNavElement('category_public', selected_page, '/html/category/public/', 'person', 'Public Categories', show_text)}
+                                               ${renderNavElement('category_personal', selected_page, '/html/category/personal/', 'lock', 'Personal Categories', show_text)}
+                                               ${renderNavElement('playlist', selected_page, '/html/playlist/', 'play', 'Playlist', show_text)}` : '';
         return `<ul>
-                    ${renderNavElement('home', selected_page, '/html/', '', 'Home', show_text)}
+                    ${renderNavElement('home', selected_page, '/html/', 'home', 'Home', show_text)}
                     ${user_only_elements}
-                    ${renderNavElement('settings', selected_page, '/html/settings/', '', 'Settings', show_text)}
-                    ${renderNavElement('about', selected_page, '/html/about/', '', 'About', show_text)}
+                    ${renderNavElement('settings', selected_page, '/html/settings/', 'cog', 'Settings', show_text)}
+                    ${renderNavElement('about', selected_page, '/html/about/', 'info', 'About', show_text)}
                </ul>`;
     }
     
